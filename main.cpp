@@ -17,8 +17,6 @@
 #define TCP_PROTOCOL 6
 
 /*
-to create a socket
-Domain -> Protocol available for this domain ->
 
 A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
 
@@ -40,7 +38,7 @@ void    putstr(char *str)
 
 int main(void)
 {
-    setbuf(stdout, NULL);
+    setbuf(stdout, NULL); //pour éviter que printf print les lignes que quand y'a un /n, à la place il print à chaque caractère
     //struct addrinfo addr;
     //in_addr_t addr = inet_addr(IP_ADDRESS);
     protoent *proto = getprotobyname("TCP");
@@ -57,12 +55,12 @@ int main(void)
     addr.sin_len = sizeof(addr);
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9649);
-    // addr.sin_addr.s_addr = inet_addr("192.168.1.17");
+    // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_addr.s_addr = INADDR_ANY;
     bzero(addr.sin_zero, sizeof(addr.sin_zero));
     length = sizeof(addr);
     bind(sock, (const struct sockaddr *)&addr, length);
-    getsockname(sock, (struct sockaddr *)&addr, &length);
+    //getsockname(sock, (struct sockaddr *)&addr, &length);
     printf("addr=%s | port=%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
     /* listen */
@@ -79,10 +77,10 @@ int main(void)
         if ((sock2 = accept(sock, (struct sockaddr *)&addr, &addr_len)) == -1)
             break ;
         printf("connexion réussie ! sock2=%d\n", sock2);
-        while ((rval = read(sock2, buf, 1024)))
+        while ((rval = read(sock2, buf, 1024))) // read mais faut utiliser recv(pour plus de contrôle) 
         {
             buf[1024] = 0;
-            //write(descriptor, buf, 1024);
+            //write(sock2, buf, 1024); // write mais faut utiliser send (pour plus de contrôle)
             printf("%s", buf);
             bzero(buf, 1024);
         }
