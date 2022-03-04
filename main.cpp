@@ -23,6 +23,13 @@ Domain -> Protocol available for this domain ->
 A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
 
 FIONBIO to set sockets I/O as non-blocking
+
+Sylvain :
+voir ce que htons fait exactement
+faire cast c++ dans bind(...)
+
+Benjamin :
+
 */
 
 void    putstr(char *str)
