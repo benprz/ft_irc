@@ -17,8 +17,6 @@
 #define TCP_PROTOCOL 6
 
 /*
-to create a socket
-Domain -> Protocol available for this domain ->
 
 A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
 
@@ -55,7 +53,7 @@ int main(void)
     bzero(addr.sin_zero, sizeof(addr.sin_zero));
     length = sizeof(addr);
     bind(sock, (const struct sockaddr *)&addr, length);
-    getsockname(sock, (struct sockaddr *)&addr, &length);
+    //getsockname(sock, (struct sockaddr *)&addr, &length);
     printf("addr=%s | port=%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
     /* listen */
