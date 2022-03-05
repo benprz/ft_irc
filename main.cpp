@@ -21,6 +21,9 @@
 A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
 
 FIONBIO to set sockets I/O as non-blocking
+
+https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
+
 */
 
 void    putstr(char *str)
