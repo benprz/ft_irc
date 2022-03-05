@@ -22,7 +22,15 @@ A socket name in the Internet domain is an Internet address, made up of a 32-bit
 
 FIONBIO to set sockets I/O as non-blocking
 
+<<<<<<< HEAD
 https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
+=======
+Sylvain :
+voir ce que htons fait exactement
+faire cast c++ dans bind(...)
+
+Benjamin :
+>>>>>>> a56d3d167d30cb688057d19e888d5516e06e23eb
 
 */
 
