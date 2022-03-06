@@ -22,16 +22,18 @@ A socket name in the Internet domain is an Internet address, made up of a 32-bit
 
 FIONBIO to set sockets I/O as non-blocking
 
-<<<<<<< HEAD
 https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
-=======
+
 Sylvain :
 voir ce que htons fait exactement
 faire cast c++ dans bind(...)
 
 Benjamin :
->>>>>>> a56d3d167d30cb688057d19e888d5516e06e23eb
-
+comprendre ->   comment initier la connexion entre serveur et client en utilisant la norme RFC1459
+                ce que sont les non-blocking I/O sockets
+                fcntl
+                poll
+                utiliser send/recv à la place de read et write
 */
 
 void    putstr(char *str)
@@ -78,6 +80,7 @@ int main(void)
     
     while (1)
     {
+        // utiliser une autre variable adresse, celle-ci n'a pas à être configurée, c'est l'adresse du client pas du serveur
         if ((sock2 = accept(sock, (struct sockaddr *)&addr, &addr_len)) == -1)
             break ;
         printf("connexion réussie ! sock2=%d\n", sock2);
@@ -95,8 +98,8 @@ int main(void)
 
 		getsockname(sock2, (struct sockaddr *)&addr2, &addr2_len);
         printf("addr2=%s | port2=%d <-\n", inet_ntoa(addr2.sin_addr), ntohs(addr2.sin_port));
-        //connect(sock2, )
         close(sock2);
+        //connect(sock2, )
     }
 
     /*  connect 
