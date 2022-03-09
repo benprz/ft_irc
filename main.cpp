@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,13 +10,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <string.h>
 #include <sys/errno.h>
 #include <unistd.h>
-
-#define IP_ADDRESS "127.0.0.1"
-
-#define IP_PROTOCOL 0
-#define TCP_PROTOCOL 6
 
 /*
 
@@ -29,82 +27,157 @@ voir ce que htons fait exactement
 faire cast c++ dans bind(...)
 
 Benjamin :
-comprendre ->   comment initier la connexion entre serveur et client en utilisant la norme RFC1459
-                ce que sont les non-blocking I/O sockets
-                fcntl
-                poll
-                utiliser send/recv à la place de read et write
+comprendre comment initier la connexion entre serveur et client en utilisant la norme RFC1459
 */
 
-void    putstr(char *str)
+#define ERROR 1
+#define PROTO "TCP"
+#define PORT 16385
+#define SOCK_DOMAIN AF_INET
+#define IP_ADDR "0.0.0.0"
+#define SOCK_TYPE SOCK_STREAM
+#define RECV_BUF_SIZE 1024
+#define MAX_CLIENT_CONNEXIONS 1
+
+int	create_server_descriptor(void)
 {
-    while (*str)
-        putchar(*str++);
+	int	server_fd, sockopt_reuseaddr_val;
+    protoent *proto;
+	struct sockaddr_in server_addr;
+
+    // on récupère l'index du protocole TCP dans /etc/protocols (sous UNIX seulement)
+    if ((proto = getprotobyname(PROTO)) == NULL)
+    {
+        std::cout << "Couldn't find protocol: " << PROTO << std::endl;
+        return (ERROR);
+    }
+
+    // on crée un socket sur le domaine d'internet
+    if ((server_fd = socket(SOCK_DOMAIN, SOCK_TYPE, proto->p_proto)) == -1)
+    {
+        std::cout << "Server socket error -> socket() : " << strerror(errno) << std::endl;
+        return (ERROR);
+    }
+
+	bzero(&server_addr, sizeof(server_addr));
+	server_addr.sin_family = SOCK_DOMAIN;
+	server_addr.sin_port = htons(PORT);
+	inet_pton(SOCK_DOMAIN, IP_ADDR, &server_addr.sin_addr);
+
+    //setsockopt SO_REUSEADDR permet de réutiliser des adresses déjà utilisées (ça permet de fix le fait que parfois les fd des sockets ne sont pas tout le temps complètements supprimés, du coup ça met une erreur au moment du bind())
+    sockopt_reuseaddr_val = 1;
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &sockopt_reuseaddr_val, sizeof(sockopt_reuseaddr_val));
+
+    // on bind l'adresse du serveur au socket
+    if (bind(server_fd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    {
+        std::cout << "Server socket error " << errno << " -> bind() : " << strerror(errno) << std::endl;
+        return (ERROR);
+    }
+
+    // on peut listen sur le socket, écouter les connexions entrantes
+    if (listen(server_fd, MAX_CLIENT_CONNEXIONS) == -1)
+    {
+        std::cout << "Server socket error " << errno << " -> listen() : " << strerror(errno) << std::endl;
+        return (ERROR);
+    }
+
+    //on set le server_fd en O_NONBLOCK pour que accept ne loop pas en attendant une connexion et on surveille les I/O des sockets avec poll en mettant le timeout à -1 pour que ça soit lui qui attende indéfiniment une connexion
+    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        std::cout << "Server socket error " << errno << " -> fcntl(*, F_SETFL, O_NONBLOCK) : " << strerror(errno) << std::endl;
+        return (ERROR);
+    }
+
+	return (server_fd);
+}
+
+void	add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+{
+	pfds[*nb_pfds].fd = fd;
+	pfds[*nb_pfds].events = POLLIN;
+	pfds[*nb_pfds].revents = 0;
+	*nb_pfds += 1;
+}
+
+void	remove_descriptor_from_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+{
+	for (int i = 0; i < *nb_pfds; i++)
+	{
+		if (pfds[i].fd == fd)
+		{
+			pfds[i].fd = -1;
+			pfds[i].events = 0;
+			pfds[i].revents = 0;
+			nb_pfds -= 1;
+			break ;
+		}
+	}
+}
+
+void	send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t nb_pfds, int sender_fd)
+{
+	std::cout << "sender_fd=" << sender_fd << std::endl;
+	for (int i = 1; i < nb_pfds; i++)
+	{
+		if (sender_fd != pfds[i].fd)
+			send(pfds[i].fd, buf, length, 0);
+	}
 }
 
 int main(void)
 {
-    setbuf(stdout, NULL); //pour éviter que printf print les lignes que quand y'a un /n, à la place il print à chaque caractère
-    //struct addrinfo addr;
-    //in_addr_t addr = inet_addr(IP_ADDRESS);
-    protoent *proto = getprotobyname("TCP");
-    if (!proto)
-        return 0;
+    int server_fd, nb_ready_clients, client_fd;
+    struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
+    nfds_t nb_pfds = 0;
+	char	recv_buf[RECV_BUF_SIZE + 1];
+	ssize_t	recv_length;
 
-    /*  socket */
-    int sock = socket(PF_INET, SOCK_STREAM, proto->p_proto);
+    setbuf(stdout, NULL); // debug, pour éviter que printf print les lignes que quand y'a un /n, à la place il print à chaque caractère
+	server_fd = create_server_descriptor();
 
-    /*  bind */
-    struct sockaddr_in addr;
-    socklen_t   length;
+    //on ajoute server_fd au tableau pollfd requis pour poll
+	add_descriptor_to_poll(server_fd, pfds, &nb_pfds);
 
-    addr.sin_len = sizeof(addr);
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(9649);
-    // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    addr.sin_addr.s_addr = INADDR_ANY;
-    bzero(addr.sin_zero, sizeof(addr.sin_zero));
-    length = sizeof(addr);
-    bind(sock, (const struct sockaddr *)&addr, length);
-    //getsockname(sock, (struct sockaddr *)&addr, &length);
-    printf("addr=%s | port=%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-    /* listen */
-    listen(sock, 1);
-
-    /* accept */
-    socklen_t   addr_len = sizeof(addr);
-    int sock2, rval, pw, welcome = 0;
-    char buf[1025];
-
-    
-    while (1)
-    {
-        // utiliser une autre variable adresse, celle-ci n'a pas à être configurée, c'est l'adresse du client pas du serveur
-        if ((sock2 = accept(sock, (struct sockaddr *)&addr, &addr_len)) == -1)
-            break ;
-        printf("connexion réussie ! sock2=%d\n", sock2);
-        while ((rval = read(sock2, buf, 1024))) // read mais faut utiliser recv(pour plus de contrôle) 
-        {
-            buf[1024] = 0;
-            //write(sock2, buf, 1024); // write mais faut utiliser send (pour plus de contrôle)
-            printf("%s", buf);
-            bzero(buf, 1024);
-        }
-        printf("\n");
-
-        struct sockaddr_in addr2;
-        socklen_t   addr2_len = sizeof(addr2);
-
-		getsockname(sock2, (struct sockaddr *)&addr2, &addr2_len);
-        printf("addr2=%s | port2=%d <-\n", inet_ntoa(addr2.sin_addr), ntohs(addr2.sin_port));
-        close(sock2);
-        //connect(sock2, )
-    }
-
-    /*  connect 
-    printf("%d\n", connect(sock, &address, socklen));
-*/
-
+	while (1)
+	{
+		if ((nb_ready_clients = poll(pfds, nb_pfds, -1)) == -1)
+		{
+			std::cout << "Client socket error " << errno << " -> poll() : " << strerror(errno) << std::endl;
+			return (ERROR);
+		}
+		for (int i = 0; i < nb_pfds; i++)
+		{
+			if (pfds[i].revents & POLLIN)
+			{
+				// 0 étant l'index dans le tableau pfds pour server_fd
+				if (i == 0)
+				{
+					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
+					{
+						std::cout << "Client socket error " << errno << " -> accept() : " << strerror(errno) << std::endl;
+						return (ERROR);
+					}
+					add_descriptor_to_poll(client_fd, pfds, &nb_pfds);
+				}
+				else 
+				{
+					recv_length = recv(pfds[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					if (recv_length <= 0)
+					{
+						if (recv_length == -1)
+							std::cout << "Client socket error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i].fd, pfds, &nb_pfds);
+					}
+					else 
+					{
+						recv_buf[recv_length] = 0;
+						send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
+					}
+				}
+			}
+		}
+	}
     return 0;
 }
