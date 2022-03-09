@@ -34,7 +34,7 @@ comprendre comment initier la connexion entre serveur et client en utilisant la 
 #define PROTO "TCP"
 #define PORT 16385
 #define SOCK_DOMAIN AF_INET
-#define IP_ADDR "0.0.0.0"
+#define IP_ADDR "127.0.0.1"
 #define SOCK_TYPE SOCK_STREAM
 #define RECV_BUF_SIZE 1024
 #define MAX_CLIENT_CONNEXIONS 1
