@@ -92,6 +92,7 @@ int	create_server_descriptor(void)
 	return (server_fd);
 }
 
+//overwrite sur un descriptor qui a ete remove (mis a -1)
 void	add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
 {
 	pfds[*nb_pfds].fd = fd;
