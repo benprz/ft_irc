@@ -1,0 +1,18 @@
+A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
+
+FIONBIO to set sockets I/O as non-blocking
+
+https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
+
+Sylvain :
+faire cast c++ dans bind(...)
+comprendre comment fonctionne IRC de maniere generale
+vois avec Milos que faire des donnees crees par l serveur sur le screen de Ben
+comprendre comment initier la connexion entre serveur et client en utilisant la norme RFC1459
+
+
+Benjamin :
+
+
+tous les deux :
+creer des classes ?

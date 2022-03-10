@@ -14,22 +14,6 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-/*
-
-A socket name in the Internet domain is an Internet address, made up of a 32-bit IP address and a 16-bit port address.
-
-FIONBIO to set sockets I/O as non-blocking
-
-https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
-
-Sylvain :
-voir ce que htons fait exactement
-faire cast c++ dans bind(...)
-
-Benjamin :
-comprendre comment initier la connexion entre serveur et client en utilisant la norme RFC1459
-*/
-
 #define ERROR 1
 #define PROTO "TCP"
 #define PORT 16385
@@ -154,6 +138,7 @@ int main(void)
 				// 0 étant l'index dans le tableau pfds pour server_fd
 				if (i == 0)
 				{
+                    // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
 					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 					{
 						std::cout << "Client socket error " << errno << " -> accept() : " << strerror(errno) << std::endl;
