@@ -4,6 +4,16 @@ FIONBIO to set sockets I/O as non-blocking
 
 https://ngircd.barton.de/ serveur irc pour check le comportement avec le notre
 
+" 8.2
+To provide useful 'non-buffered' network IO for clients and servers,
+   each connection is given its own private 'input buffer' in which the
+   results of the most recent read and parsing are kept.  A buffer size
+   of 512 bytes is used so as to hold 1 full message, although, this
+   will usually hold several commands.  The private buffer is parsed
+   after every read operation for valid messages.  When dealing with
+   multiple messages from one client in the buffer, care should be taken
+   in case one happens to cause the client to be 'removed'. "
+
 Sylvain :
 faire cast c++ dans bind(...)
 comprendre comment fonctionne IRC de maniere generale
