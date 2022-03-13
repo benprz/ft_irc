@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 
 #include <poll.h>
 #include <sys/types.h>
@@ -22,6 +23,9 @@
 #define SOCK_TYPE SOCK_STREAM
 #define RECV_BUF_SIZE 1024
 #define MAX_CLIENT_CONNEXIONS 1
+#define PASSWORD "sylben123"
+
+#define ERR_PASSWDMISMATCH 464
 
 int	create_server_descriptor(void)
 {
@@ -110,6 +114,47 @@ void	send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t 
 	}
 }
 
+std::vector<std::string> string_split(std::string s, const char delimiter)
+{
+    size_t start=0;
+    size_t end=s.find_first_of(delimiter);
+    
+    std::vector<std::string> output;
+    
+    while (end <= std::string::npos)
+    {
+	    output.__emplace_back(s.substr(start, end-start));
+
+	    if (end == std::string::npos)
+	    	break;
+
+    	start=end+1;
+    	end = s.find_first_of(delimiter, start);
+    }
+    return output;
+}
+
+void	parse_client_packets(int client_fd, std::string packets)
+{
+	std::vector<std::string> split_packets = string_split(packets, ' ');
+
+	std::string command = split_packets[0];
+	std::string param = split_packets[1];
+
+	std::cout << packets;
+	if (command.compare("PASS") == 0)
+	{
+		param.pop_back();
+		param.pop_back();
+		if (param.compare(PASSWORD) != 0)
+		{
+			uint32_t error = ERR_PASSWDMISMATCH;
+			std::cout << "Erreur, mot de passe incorrect" << std::endl;
+			send(client_fd, &error, 4, 0);
+		}
+	}
+}
+
 int main(void)
 {
     int server_fd, nb_ready_clients, client_fd;
@@ -159,7 +204,8 @@ int main(void)
 					else 
 					{
 						recv_buf[recv_length] = 0;
-						send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
+						parse_client_packets(client_fd, recv_buf);
+						//send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
 					}
 				}
 			}
