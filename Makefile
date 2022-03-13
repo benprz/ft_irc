@@ -2,7 +2,7 @@
 
 NAME = ircserv
 CC = c++
-CPPFLAGS = -g3 #-Wextra -Wall -Werror
+CPPFLAGS = -g3 -std=c++98#-Wextra -Wall -Werror
 INC_DIR = ./
 INC =
 
