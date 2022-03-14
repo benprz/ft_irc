@@ -134,8 +134,18 @@ std::vector<std::string> string_split(std::string s, const char delimiter)
     return output;
 }
 
-void	parse_client_packets(int client_fd, std::string packets)
+void	parse_client_packets(int client_fd, std::string packet)
 {
+	std::string yo = "\n";
+
+	if (yo.find('\n'))
+	{
+		if (packet.find('\n'))
+		{
+			std::cout << packet << std::endl;
+		}
+	}
+	/*
 	std::vector<std::string> split_packets = string_split(packets, ' ');
 
 	std::string command = split_packets[0];
@@ -153,6 +163,7 @@ void	parse_client_packets(int client_fd, std::string packets)
 			send(client_fd, "Erreur: incorrect password", strlen("Erreur: incorrect password"), 0);
 		}
 	}
+	*/
 }
 
 int main(void)
@@ -163,7 +174,7 @@ int main(void)
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
-    setbuf(stdout, NULL); // debug, pour éviter que printf print les lignes que quand y'a un /n, à la place il print à chaque caractère
+    setbuf(stdout, NULL); // debug, pour éviter que printf ou cout print les lignes que quand y'a un /n, à la place il print à chaque caractère
 	server_fd = create_server_descriptor();
 
     //on ajoute server_fd au tableau pollfd requis pour poll
