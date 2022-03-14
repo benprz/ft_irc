@@ -150,7 +150,7 @@ void	parse_client_packets(int client_fd, std::string packets)
 		{
 			uint32_t error = ERR_PASSWDMISMATCH;
 			std::cout << "Erreur, mot de passe incorrect" << std::endl;
-			send(client_fd, &error, 4, 0);
+			send(client_fd, "Erreur: incorrect password", strlen("Erreur: incorrect password"), 0);
 		}
 	}
 }
