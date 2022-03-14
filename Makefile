@@ -2,12 +2,12 @@
 
 NAME = ircserv
 CC = c++
-CPPFLAGS = -g3 -std=c++98#-Wextra -Wall -Werror
+CPPFLAGS = -g3 -std=c++98
 INC_DIR = ./
-INC =
+INC = Client.hpp
 
 SRC_DIR = ./
-SRC =	main.cpp \
+SRC =	main.cpp
 
 OBJ_DIR = .obj/
 OBJ = $(SRC:%.cpp=$(OBJ_DIR)%.o)
@@ -17,7 +17,7 @@ OBJ = $(SRC:%.cpp=$(OBJ_DIR)%.o)
 all: $(NAME) exec
 
 $(NAME): $(OBJ)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $(OBJ) -o $(NAME)
+	$(CC) $(CPPFLAGS) -I$(INC_DIR) $(OBJ) -o $(NAME)
 
 $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp $(addprefix $(INC_DIR),$(INC))
 	mkdir -p $(@D)

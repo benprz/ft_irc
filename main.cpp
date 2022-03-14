@@ -15,14 +15,15 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-#define ERROR 1 // je trouve -1 plus logique perso
+#include "Client.hpp"
+
+#define ERROR -1 // je trouve -1 plus logique perso
 #define PROTO "TCP"
 #define PORT 16385
 #define SOCK_DOMAIN AF_INET
 #define IP_ADDR "127.0.0.1"
 #define SOCK_TYPE SOCK_STREAM
 #define RECV_BUF_SIZE 1024
-#define MAX_CLIENT_CONNEXIONS 1
 #define PASSWORD "sylben123"
 
 #define ERR_PASSWDMISMATCH 464
@@ -91,24 +92,31 @@ int	create_server_descriptor(void)
 }
 
 //overwrite sur un descriptor qui a ete remove (mis a -1)
-void	add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+/*void	add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, nfds_t *nb_clients)
 {
-	pfds[*nb_pfds].fd = fd;
-	pfds[*nb_pfds].events = POLLIN;
-	pfds[*nb_pfds].revents = 0;
-	*nb_pfds += 1;
+	nfds_t i = 0;
+
+	while (i < *nb_clients)
+	{
+		if (Clients[i].fd == -1)
+			break ;
+		i++;
+	}
+	Clients[i].fd = fd;
+	Clients[i].events = POLLIN;
+	Clients[i].revents = 0;
+	*nb_clients += 1;
+					std::cout << fd << " " << *nb_clients << std::endl;
 }
 
-void	remove_descriptor_from_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+void	remove_descriptor_from_poll(int fd, ClientsMonitoringList *Clients, nfds_t *nb_clients)
 {
-	for (int i = 0; i < *nb_pfds; i++)
+	for (nfds_t i = 0; i < *nb_clients; i++)
 	{
-		if (pfds[i].fd == fd)
+		if (Clients[i].fd == fd)
 		{
-			pfds[i].fd = -1;
-			pfds[i].events = 0;
-			pfds[i].revents = 0;
-			nb_pfds -= 1;
+			Clients->reset();
+			*nb_clients -= 1;
 			break ;
 		}
 	}
@@ -117,11 +125,46 @@ void	remove_descriptor_from_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
 void	send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t nb_pfds, int sender_fd)
 {
 	std::cout << "sender_fd=" << sender_fd << std::endl;
-	for (int i = 1; i < nb_pfds; i++)
+	for (nfds_t i = 1; i < nb_pfds; i++)
 	{
 		if (sender_fd != pfds[i].fd)
 			send(pfds[i].fd, buf, length, 0);
 	}
+}
+*/
+
+//overwrite sur un descriptor qui a ete remove (mis a -1)
+void    add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+{
+    pfds[*nb_pfds].fd = fd;
+    pfds[*nb_pfds].events = POLLIN;
+    pfds[*nb_pfds].revents = 0;
+    *nb_pfds += 1;
+}
+
+void    remove_descriptor_from_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+{
+    for (int i = 0; i < *nb_pfds; i++)
+    {
+        if (pfds[i].fd == fd)
+        {
+            pfds[i].fd = -1;
+            pfds[i].events = 0;
+            pfds[i].revents = 0;
+            nb_pfds -= 1;
+            break ;
+        }
+    }
+}
+
+void    send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t nb_pfds, int sender_fd)
+{
+    std::cout << "sender_fd=" << sender_fd << std::endl;
+    for (int i = 1; i < nb_pfds; i++)
+    {
+        if (sender_fd != pfds[i].fd)
+            send(pfds[i].fd, buf, length, 0);
+    }
 }
 
 std::vector<std::string> string_split(std::string s, const char delimiter)
@@ -144,89 +187,127 @@ std::vector<std::string> string_split(std::string s, const char delimiter)
     return output;
 }
 
-void	parse_client_packets(int client_fd, std::string packet)
+#define FOREACH_COMMAND(COMMAND) \
+        COMMAND(PASS)   \
+        COMMAND(NICK)	\
+		COMMAND(NB_COMMANDS)
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+enum COMMAND_ENUM {
+    FOREACH_COMMAND(GENERATE_ENUM)
+};
+
+static const char *g_commands_name[] = {
+    FOREACH_COMMAND(GENERATE_STRING)
+};
+
+int	get_command_index(std::string command)
 {
-	std::string yo = "\n";
-
-	if (yo.find('\n'))
+	for (int i = 0; i < NB_COMMANDS; i++)
 	{
-		if (packet.find('\n'))
-		{
-			std::cout << packet << std::endl;
-		}
+		if (command == g_commands_name[i])
+			return (i);
 	}
-	/*
-	std::vector<std::string> split_packets = string_split(packets, ' ');
-
-	std::string command = split_packets[0];
-	std::string param = split_packets[1];
-
-	std::cout << packets;
-	if (command.compare("PASS") == 0)
-	{
-		param.pop_back();
-		param.pop_back();
-		if (param.compare(PASSWORD) != 0)
-		{
-			uint32_t error = ERR_PASSWDMISMATCH;
-			std::cout << "Erreur, mot de passe incorrect" << std::endl;
-			send(client_fd, "Erreur: incorrect password", strlen("Erreur: incorrect password"), 0);
-		}
-	}
-	*/
+	return (-1);
 }
 
-int main(void)
+void	pass_command(std::vector<std::string> split_packet)
 {
-    int server_fd, nb_ready_clients, client_fd;
-    struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
-    nfds_t nb_pfds = 0;
+	std::cout << "pass command!" << std::endl;
+}
+
+void	nick_command(std::vector<std::string> split_packet)
+{
+	std::cout << "nick command!" << std::endl;
+}
+
+void	(*g_commands_functions[NB_COMMANDS])(std::vector<std::string>) = {
+	pass_command,
+	nick_command
+};
+
+void	parse_client_packet(ClientsMonitoringList &Client, std::string packet)
+{
+	int	command_index;
+
+	if (packet.find('\n') != std::string::npos)
+	{
+		packet.push_back('\n');
+		packet.push_back('\r');
+		std::cout << "A" << std::endl;
+		std::vector<std::string> split_packet = string_split(packet, ' ');
+		if (split_packet.size() > 0)
+		{
+			std::cout << "B " << packet << std::endl;
+			if ((command_index = get_command_index(split_packet[0])) >= 0)
+				g_commands_functions[command_index](split_packet);
+			else
+				send(Client.fd, "Error: unknown command", strlen("Error: unknown command"), 0);
+		}
+		else
+			send(Client.fd, "Error: no input command", strlen("Error: no input command"), 0);
+	}
+	else
+		Client.current_packet += packet;
+}
+
+int	monitor_clients(int server_fd)
+{
+	struct pollfd	Clients[MAX_CLIENT_CONNEXIONS];
+	// ClientsMonitoringList	Clients[MAX_CLIENT_CONNEXIONS];
+	struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
+	nfds_t nb_clients = 0;
+    int nb_ready_clients, client_fd;
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
-    setbuf(stdout, NULL); // debug, pour éviter que printf ou cout print les lignes que quand y'a un /n, à la place il print à chaque caractère
-	server_fd = create_server_descriptor();
-
     //on ajoute server_fd au tableau pollfd requis pour poll
-	add_descriptor_to_poll(server_fd, pfds, &nb_pfds);
-
+	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
 	while (1)
 	{
-		if ((nb_ready_clients = poll(pfds, nb_pfds, -1)) == -1)
+		if ((nb_ready_clients = poll((struct pollfd *)Clients, nb_clients, -1)) == -1)
 		{
-			std::cout << "Client socket error " << errno << " -> poll() : " << strerror(errno) << std::endl;
-			return (ERROR);
+			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
+			break ;
 		}
-		for (int i = 0; i < nb_pfds; i++)
+		for (nfds_t i = 0; i < nb_clients; i++)
 		{
-			if (pfds[i].revents & POLLIN)
+			if (Clients[i].revents & POLLIN)
 			{
 				// 0 étant l'index dans le tableau pfds pour server_fd
 				if (i == 0)
 				{
-                    // fcntl O_NONBLOCK du coup la fonction se bloque pas si
-					// elle a pas de nouvelles connexions
+						std::cout << "ALLO" << std::endl;
+                    // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
 					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 					{
-						std::cout << "Client socket error " << errno << " -> accept() : " << strerror(errno) << std::endl;
-						return (ERROR);
+						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
+						break ;
 					}
-					add_descriptor_to_poll(client_fd, pfds, &nb_pfds);
+					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
 				}
-				else 
+				else
 				{
-					recv_length = recv(pfds[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
-					if (recv_length <= 0)
+					recv_length = recv(Clients[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					if (recv_length < 0)
 					{
 						if (recv_length == -1)
-							std::cout << "Client socket error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						close(pfds[i].fd);
-						remove_descriptor_from_poll(pfds[i].fd, pfds, &nb_pfds);
+							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+						break ;
+					}
+					else if (recv_length == 0)
+					{
+						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
+						close(Clients[i].fd);
+						remove_descriptor_from_poll(Clients[i].fd, Clients, &nb_clients);
 					}
 					else 
 					{
 						recv_buf[recv_length] = 0;
-						parse_client_packets(client_fd, recv_buf);
+						std::cout << "RECVEID" << std::endl;
+						//parse_client_packet(Clients[i], recv_buf);
 						// send_msg_to_all_fds(pfds, recv_buf, recv_length,
 						// nb_pfds, pfds[i].fd);
 					}
@@ -234,5 +315,24 @@ int main(void)
 			}
 		}
 	}
+	return (ERROR);
+}
+
+int main(int argc, char **argv)
+{
+	int server_fd;
+
+	setbuf(stdout, NULL); // debug, pour éviter que printf ou cout print les lignes que quand y'a un /n, à la place il print à chaque caractère
+	(void)argc;
+	(void)argv;
+
+	// if (argc == 3)
+	// {
+		if ((server_fd = create_server_descriptor()) >= 3)
+		{
+			monitor_clients(server_fd);
+		}
+	// }
+
     return 0;
 }
