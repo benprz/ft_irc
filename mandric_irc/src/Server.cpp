@@ -38,7 +38,7 @@ void Server::on_connection(sockaddr_in new_addr, socklen_t addrlen, int new_fd) 
         this->_socket_fd.push_back(new_fd);
         this->_v_clients.push_back(*new_user);
         std::cout << inet_ntoa(_v_clients.back().getInfo().sin_addr) << " -> Ip adress of new_user" << std::endl;
-				delete new_user;
+	delete new_user;
 }
 
 bool Server::bufferComplete(int fd, char buf[5000]) {
@@ -104,7 +104,8 @@ void Server::loop(void)
                                                 _m_fdbuffer[*it_fd].erase();
                                         }
                                         ret_val = recv(*it_fd, _buf, DATA_BUFFER, 0);
-                                        /*ret_val >= 2 ? _buf[ret_val] = 0 : */ _buf[ret_val] = 0;
+                                        /*ret_val >= 2 ? _buf[ret_val] = 0 : */
+                                        _buf[ret_val] = 0;
                                         if (ret_val == 0)
                                         {
                                                 std::cout << "Closing connection for fd-> " << *it_fd << std::endl;

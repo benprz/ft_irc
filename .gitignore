@@ -1,3 +1,5 @@
+*.dSYM
+*.o
 .DS_Store
 .obj
 ircserv

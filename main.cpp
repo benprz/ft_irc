@@ -1,3 +1,4 @@
+#include "Server.hpp"
 #include <iostream>
 #include <vector>
 
@@ -368,16 +369,19 @@ int main(int argc, char **argv)
 	int server_fd;
 
 	setbuf(stdout, NULL); // debug, pour éviter que printf ou cout print les lignes que quand y'a un /n, à la place il print à chaque caractère
-	(void)argc;
-	(void)argv;
+	// (void)argc;
+	// (void)argv;
 
-	// if (argc == 3)
-	// {
+	if (argc == 3)
+	{
+		Server sylbenirc(atoi(argv[1]), argv[2]);
 		if ((server_fd = create_server_descriptor()) >= 3)
 		{
 			monitor_clients(server_fd);
 		}
-	// }
-
-    return 0;
+	}
+	else
+		std::cout << "Usage : ./ircserv <port> <password>" << std::endl;
+    
+	return 0;
 }
