@@ -326,18 +326,21 @@ int	monitor_clients(int server_fd)
 				else
 				{
 					recv_length = recv(Clients[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					//si y'a une erreur
 					if (recv_length < 0)
 					{
 						if (recv_length == -1)
 							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
 						break ;
 					}
+					//la connexion s'est coupée, EOF, on supprime donc le fd
 					else if (recv_length == 0)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
 						close(Clients[i].fd);
 						remove_descriptor_from_poll(Clients[i].fd, Clients, &nb_clients);
 					}
+					//on a reçu un paquet! on l'ouvre :-)
 					else 
 					{
 						std::cout << "RCVEVEVEVE" << std::endl;
