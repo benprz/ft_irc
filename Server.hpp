@@ -50,8 +50,6 @@ class Server
 		int				create_server_descriptor(void) const;
 		int				monitor_clients(int server_fd); // const ?
 		void			add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds); // const ?
-	
-
 };
 
 #endif
