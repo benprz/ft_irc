@@ -4,7 +4,7 @@ NAME = ircserv
 CC = c++
 CPPFLAGS = -g3 -std=c++98
 INC_DIR = ./
-INC = Client.hpp
+INC = ClientsMonitoringList.hpp
 
 SRC_DIR = ./
 SRC =	main.cpp

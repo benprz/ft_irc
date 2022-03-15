@@ -15,7 +15,7 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-#include "Client.hpp"
+#include "ClientsMonitoringList.hpp"
 
 #define ERROR -1 // je trouve -1 plus logique perso
 #define PROTO "TCP"
@@ -91,82 +91,7 @@ int	create_server_descriptor(void)
 	return (server_fd);
 }
 
-//overwrite sur un descriptor qui a ete remove (mis a -1)
-/*void	add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, nfds_t *nb_clients)
-{
-	nfds_t i = 0;
-
-	while (i < *nb_clients)
-	{
-		if (Clients[i].fd == -1)
-			break ;
-		i++;
-	}
-	Clients[i].fd = fd;
-	Clients[i].events = POLLIN;
-	Clients[i].revents = 0;
-	*nb_clients += 1;
-					std::cout << fd << " " << *nb_clients << std::endl;
-}
-
-void	remove_descriptor_from_poll(int fd, ClientsMonitoringList *Clients, nfds_t *nb_clients)
-{
-	for (nfds_t i = 0; i < *nb_clients; i++)
-	{
-		if (Clients[i].fd == fd)
-		{
-			Clients->reset();
-			*nb_clients -= 1;
-			break ;
-		}
-	}
-}
-
-void	send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t nb_pfds, int sender_fd)
-{
-	std::cout << "sender_fd=" << sender_fd << std::endl;
-	for (nfds_t i = 1; i < nb_pfds; i++)
-	{
-		if (sender_fd != pfds[i].fd)
-			send(pfds[i].fd, buf, length, 0);
-	}
-}
-*/
-
-//overwrite sur un descriptor qui a ete remove (mis a -1)
-void    add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
-{
-    pfds[*nb_pfds].fd = fd;
-    pfds[*nb_pfds].events = POLLIN;
-    pfds[*nb_pfds].revents = 0;
-    *nb_pfds += 1;
-}
-
-void    remove_descriptor_from_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
-{
-    for (int i = 0; i < *nb_pfds; i++)
-    {
-        if (pfds[i].fd == fd)
-        {
-            pfds[i].fd = -1;
-            pfds[i].events = 0;
-            pfds[i].revents = 0;
-            nb_pfds -= 1;
-            break ;
-        }
-    }
-}
-
-void    send_msg_to_all_fds(struct pollfd *pfds, char *buf, ssize_t length, nfds_t nb_pfds, int sender_fd)
-{
-    std::cout << "sender_fd=" << sender_fd << std::endl;
-    for (int i = 1; i < nb_pfds; i++)
-    {
-        if (sender_fd != pfds[i].fd)
-            send(pfds[i].fd, buf, length, 0);
-    }
-}
-
+/*
 std::vector<std::string> string_split(std::string s, const char delimiter)
 {
     size_t start=0;
@@ -252,100 +177,117 @@ void	parse_client_packet(ClientsMonitoringList &Client, std::string packet)
 	else
 		Client.current_packet += packet;
 }
+		*/
+
+//overwrite sur un descriptor qui a ete remove (mis a -1)
+void    add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t &nb_pfds)
+{
+	nfds_t i = 0;
+
+	while (i < nb_pfds)
+	{
+		if (pfds[i].fd == -1)
+			break ;
+		i++;
+	}
+	std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nb_pfds=" << nb_pfds + 1 << std::endl;
+    pfds[i].fd = fd;
+    pfds[i].events = POLLIN;
+    nb_pfds++;
+}
+
+void    remove_descriptor_from_poll(struct pollfd &pfds, nfds_t &nb_pfds)
+{
+	pfds.fd = -1;
+	pfds.events = 0;
+	pfds.revents = 0;
+	nb_pfds--;
+}
+
+void	print_pfds(struct pollfd *pfds, nfds_t npfds)
+{
+	std::cout << "\n#-------- pfds list ---------#\n";
+	std::cout << "pfds[" << 0 << "]" << std::endl;
+	std::cout << "	fd=" << pfds[0].fd << std::endl;
+	std::cout << "	events=" << pfds[0].events << std::endl;
+	std::cout << "	revents=" << pfds[0].revents << std::endl;
+	for (int i = 1; i < npfds; i++)
+	{
+		if (pfds[i].fd == -1)
+		{
+			npfds++;
+			continue ;
+		}
+		std::cout << std::endl << "pfds[" << i << "]" << std::endl;
+		std::cout << "	fd=" << pfds[i].fd << std::endl;
+		std::cout << "	events=" << pfds[i].events << std::endl;
+		std::cout << "	revents=" << pfds[i].revents << std::endl;
+	}
+	std::cout << "#----------------------------#\n\n";
+}
 
 int	monitor_clients(int server_fd)
 {
-	// en c++ une classe, c'est exactement comme une structure presque (vérifie sur internet tu verras), et le truc
-	// c'est que ClientsMonitoringList hérite de pollfd donc c'est comme si c'était pollfd. Et ça marche.
-	// Sauf que poll arrive pas à gérer ça, je comprends pas pq il arrive juste pas à changer la valeurs des variables revents
-	// pour chaque client, et du coup bah le programme marche que si tu laisses Clients avec le type pollfd au lieu de
-	// ClientsMonitoringList. Je suis un peu deg :/ Si tu veux chercher une autre méthode de structurer tout ça pour qu'on puisse
-	// tout regrouper par client, ça serait cool. 
-	// Je te laisse la fonction monitor_clients comme ça, c'est juste une version simplifiée sans les messages d'erreurs et sans
-	// le recv du code en commentaire juste en dessous. Comme ça tu pourras expérimenter des trucs si tu veux pour mieux
-	// comprendre comment la boucle de monitoring fonctionne (poll, accept, recv)
-
-	// ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS];
-	struct pollfd Clients[MAX_CLIENT_CONNEXIONS];
-	nfds_t nb_clients = 0;
-
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
-	while (1)
-	{
-		int nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1);
-		for (int i = 0; i < nb_clients; i++)
-		{
-			if (Clients[i].revents & POLLIN)
-			{
-				if (i == 0)
-				{
-					int client_fd = accept(server_fd, NULL, NULL);
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
-				}
-				else
-				{
-					std::cout << "Message reçu, et j'exit() parce que je sais pas quoi faire!" << std::endl;
-					exit(0);
-				}
-			}
-		}
-	}
-	/*
-	// struct pollfd	Clients[MAX_CLIENT_CONNEXIONS];
-	ClientsMonitoringList	Clients[MAX_CLIENT_CONNEXIONS];
+	struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
+	ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS];
 	nfds_t nb_clients = 0;
     int nb_ready_clients, client_fd;
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
     //on ajoute server_fd au tableau pollfd requis pour poll
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
+	add_descriptor_to_poll(server_fd, pfds, nb_clients);
+	print_pfds(pfds, nb_clients);
 	while (1)
 	{
-		if ((nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1)) == -1)
+		if ((nb_ready_clients = poll(pfds, nb_clients, -1)) == -1)
 		{
 			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
 			break ;
 		}
 		for (nfds_t i = 0; i < nb_clients; i++)
 		{
-			if (Clients[i].revents & POLLIN)
+			if (pfds[i].revents & POLLIN)
 			{
 				// 0 étant l'index dans le tableau pfds pour server_fd
 				if (i == 0)
 				{
-						std::cout << "ALLO" << std::endl;
                     // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
 					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 					{
 						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
 						break ;
 					}
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
+					add_descriptor_to_poll(client_fd, pfds, nb_clients);
+					print_pfds(pfds, nb_clients);
 				}
 				else
 				{
-					recv_length = recv(Clients[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					recv_length = recv(pfds[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
 					//si y'a une erreur
 					if (recv_length < 0)
 					{
-						if (recv_length == -1)
-							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						break ;
+						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[i].events << " revents=" << pfds[i].revents << std::endl;
+						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
+						continue ;
 					}
 					//la connexion s'est coupée, EOF, on supprime donc le fd
 					else if (recv_length == 0)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						close(Clients[i].fd);
-						remove_descriptor_from_poll(Clients[i].fd, Clients, &nb_clients);
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
 					}
 					//on a reçu un paquet! on l'ouvre :-)
 					else 
 					{
-						std::cout << "RCVEVEVEVE" << std::endl;
+						std::cout << "RECEIVED" << std::endl;
 						recv_buf[recv_length] = 0;
-						parse_client_packet(Clients[i], recv_buf);
+						// parse_client_packet(pfds[i], recv_buf);
 						// send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
 					}
 				}
@@ -353,15 +295,8 @@ int	monitor_clients(int server_fd)
 		}
 	}
 	return (ERROR);
-	*/
 }
 
-void	test(struct pollfd *pfds)
-{
-	std::cout << pfds[0].fd << std::endl;
-	std::cout << pfds[0].events << std::endl;
-	std::cout << pfds[0].revents << std::endl;
-}
 
 int main(int argc, char **argv)
 {
