@@ -1,6 +1,14 @@
 #MAKEFLAGS += --silent
 
+<<<<<<< HEAD
 NAME		= ircserv
+=======
+NAME = ircserv
+CC = c++
+CPPFLAGS = -g3 -std=c++98
+INC_DIR = ./
+INC = ClientsMonitoringList.hpp
+>>>>>>> ben
 
 CC			= c++
 
