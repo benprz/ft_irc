@@ -46,10 +46,12 @@ class ClientsMonitoringList
 		~ClientsMonitoringList() {};
 
 		void	parse_client_packet(int client_fd, std::string packet);
-		void	nick_command(std::vector<std::string> split_packet);
-		void	pass_command(std::vector<std::string> split_packet);
 		void	do_command(std::string command, std::vector<std::string> split_packet);
 		int		is_command(std::string command);
+
+		// commands
+		void	nick_command(std::vector<std::string> split_packet);
+		void	pass_command(std::vector<std::string> split_packet);
 };
 
 #endif

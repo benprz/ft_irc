@@ -1,14 +1,14 @@
 #include "Server.hpp"
 #include "ClientsMonitoringList.hpp"
 
-Server::Server() : _port(666), _password("dumbpassword")
+Server::Server() : _port(666), _password("dumbpassword") // autre port ?
 {
 	return;
 }
 
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
-	// std::cout << "Intance's port = " << getPort() << " & password = " << getPassword() << std::endl; // del
+	return; // oui ?
 }
 
 Server::~Server()
@@ -16,17 +16,7 @@ Server::~Server()
 	return;
 }
 
-// int Server::getPort() const
-// {
-// 	return (this->_port);
-// }
-
-// std::string Server::getPassword() const
-// {
-// 	return (this->_password);
-// }
-
-void	print_pfds(struct pollfd *pfds, nfds_t npfds)
+void	print_pfds(struct pollfd *pfds, nfds_t npfds) // debug
 {
 	std::cout << "\n#-------- pfds list ---------#\n";
 	std::cout << "pfds[" << 0 << "]" << std::endl;
