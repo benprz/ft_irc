@@ -1,4 +1,4 @@
-#ifndef CLIENT_HPP
+#ifndef CLIENTSMONITORINGLIST_HPP
 #define CLIENTSMONITORINGLIST_HPP
 
 #pragma once

@@ -1,7 +1,7 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "Client.hpp"
+#include "ClientsMonitoringList.hpp"
 
 #include <iostream>
 #include <vector>
