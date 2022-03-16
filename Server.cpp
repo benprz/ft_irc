@@ -98,105 +98,71 @@ void	Server::add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds
 
 int		Server::monitor_clients(int server_fd)
 {
-	// en c++ une classe, c'est exactement comme une structure presque (vérifie sur internet tu verras), et le truc
-	// c'est que ClientsMonitoringList hérite de pollfd donc c'est comme si c'était pollfd. Et ça marche.
-	// Sauf que poll arrive pas à gérer ça, je comprends pas pq il arrive juste pas à changer la valeurs des variables revents
-	// pour chaque client, et du coup bah le programme marche que si tu laisses Clients avec le type pollfd au lieu de
-	// ClientsMonitoringList. Je suis un peu deg :/ Si tu veux chercher une autre méthode de structurer tout ça pour qu'on puisse
-	// tout regrouper par client, ça serait cool. 
-	// Je te laisse la fonction monitor_clients comme ça, c'est juste une version simplifiée sans les messages d'erreurs et sans
-	// le recv du code en commentaire juste en dessous. Comme ça tu pourras expérimenter des trucs si tu veux pour mieux
-	// comprendre comment la boucle de monitoring fonctionne (poll, accept, recv)
-
-	// ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS];
-	struct pollfd Clients[MAX_CLIENT_CONNEXIONS];
-	nfds_t nb_clients = 0;
-
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
-	while (1)
-	{
-		int nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1);
-		for (int i = 0; i < nb_clients; i++)
-		{
-			if (Clients[i].revents & POLLIN)
-			{
-				if (i == 0)
-				{
-					int client_fd = accept(server_fd, NULL, NULL);
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
-				}
-				else
-				{
-					std::cout << "Message reçu, et j'exit() parce que je sais pas quoi faire!" << std::endl;
-					exit(0);
-				}
-			}
-		}
-	}
-	/*
-	// struct pollfd	Clients[MAX_CLIENT_CONNEXIONS];
-	ClientsMonitoringList	Clients[MAX_CLIENT_CONNEXIONS];
+	struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
+	ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS - 1];
 	nfds_t nb_clients = 0;
     int nb_ready_clients, client_fd;
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
     //on ajoute server_fd au tableau pollfd requis pour poll
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
+	add_descriptor_to_poll(server_fd, NULL, pfds, nb_clients);
+	print_pfds(pfds, nb_clients);
 	while (1)
 	{
-		if ((nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1)) == -1)
+		if ((nb_ready_clients = poll(pfds, nb_clients, -1)) == -1)
 		{
 			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
 			break ;
 		}
 		for (nfds_t i = 0; i < nb_clients; i++)
 		{
-			if (Clients[i].revents & POLLIN)
+			if (pfds[i].revents & POLLIN)
 			{
 				// 0 étant l'index dans le tableau pfds pour server_fd
 				if (i == 0)
 				{
-						std::cout << "ALLO" << std::endl;
                     // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
 					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 					{
 						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
 						break ;
 					}
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
+					add_descriptor_to_poll(client_fd, Clients, pfds, nb_clients);
+					print_pfds(pfds, nb_clients);
 				}
 				else
 				{
-					recv_length = recv(Clients[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					recv_length = recv(pfds[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
 					//si y'a une erreur
 					if (recv_length < 0)
 					{
-						if (recv_length == -1)
-							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						break ;
+						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[i].events << " revents=" << pfds[i].revents << std::endl;
+						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
+						continue ;
 					}
 					//la connexion s'est coupée, EOF, on supprime donc le fd
 					else if (recv_length == 0)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						close(Clients[i].fd);
-						remove_descriptor_from_poll(Clients[i].fd, Clients, &nb_clients);
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
 					}
 					//on a reçu un paquet! on l'ouvre :-)
 					else 
 					{
-						std::cout << "RCVEVEVEVE" << std::endl;
 						recv_buf[recv_length] = 0;
-						parse_client_packet(Clients[i], recv_buf);
-						// send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
+						parse_client_packet(Clients[i - 1], client_fd, recv_buf);
 					}
 				}
 			}
 		}
 	}
 	return (ERROR);
-	*/
 }
 
 int Server::launch(void)
