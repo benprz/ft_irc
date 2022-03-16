@@ -1,10 +1,5 @@
 #include "Server.hpp"
 
-#include <iostream>
-#include <vector>
-
-#include "ClientsMonitoringList.hpp"
-
 int main(int argc, char **argv)
 {
 	int ret;
