@@ -164,13 +164,6 @@ void	parse_client_packet(ClientsMonitoringList &Client, std::string packet)
 		Client.current_packet += packet;
 }
 
-void	test(struct pollfd *pfds)
-{
-	std::cout << pfds[0].fd << std::endl;
-	std::cout << pfds[0].events << std::endl;
-	std::cout << pfds[0].revents << std::endl;
-}
-
 int main(int argc, char **argv)
 {
 	int ret;
