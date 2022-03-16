@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "ClientsMonitoringList.hpp"
+#include "Server.hpp"
 
 #define ERROR -1 // je trouve -1 plus logique perso
 #define PROTO "TCP"
