@@ -25,6 +25,115 @@ Server::~Server()
 // 	return (this->_password);
 // }
 
+void	print_pfds(struct pollfd *pfds, nfds_t npfds)
+{
+	std::cout << "\n#-------- pfds list ---------#\n";
+	std::cout << "pfds[" << 0 << "]" << std::endl;
+	std::cout << "	fd=" << pfds[0].fd << std::endl;
+	std::cout << "	events=" << pfds[0].events << std::endl;
+	std::cout << "	revents=" << pfds[0].revents << std::endl;
+	for (int i = 1; i < npfds; i++)
+	{
+		if (pfds[i].fd == -1)
+		{
+			npfds++;
+			continue ;
+		}
+		std::cout << std::endl << "pfds[" << i << "]" << std::endl;
+		std::cout << "	fd=" << pfds[i].fd << std::endl;
+		std::cout << "	events=" << pfds[i].events << std::endl;
+		std::cout << "	revents=" << pfds[i].revents << std::endl;
+	}
+	std::cout << "#----------------------------#\n\n";
+}
+
+std::vector<std::string> string_split(std::string s, const char delimiter)
+{
+    size_t start=0;
+    size_t end=s.find_first_of(delimiter);
+    
+    std::vector<std::string> output;
+    
+    while (end <= std::string::npos)
+    {
+	    output.__emplace_back(s.substr(start, end-start));
+
+	    if (end == std::string::npos)
+	    	break;
+
+    	start=end+1;
+    	end = s.find_first_of(delimiter, start);
+    }
+    return output;
+}
+
+#define FOREACH_COMMAND(COMMAND) \
+        COMMAND(PASS)   \
+        COMMAND(NICK)	\
+		COMMAND(NB_COMMANDS)
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+enum COMMAND_ENUM {
+    FOREACH_COMMAND(GENERATE_ENUM)
+};
+
+static const char *g_commands_name[] = {
+    FOREACH_COMMAND(GENERATE_STRING)
+};
+
+int	get_command_index(std::string command)
+{
+	for (int i = 0; i < NB_COMMANDS; i++)
+	{
+		if (command == g_commands_name[i])
+			return (i);
+	}
+	return (-1);
+}
+
+void	pass_command(std::vector<std::string> split_packet)
+{
+	std::cout << "pass command!" << std::endl;
+}
+
+void	nick_command(std::vector<std::string> split_packet)
+{
+	std::cout << "nick command!" << std::endl;
+}
+
+void	(*g_commands_functions[NB_COMMANDS])(std::vector<std::string>) = {
+	pass_command,
+	nick_command
+};
+
+void	parse_client_packet(ClientsMonitoringList &Client, int client_fd, std::string packet)
+{
+	int	command_index;
+	std::string current_command;
+	int	newline_pos;
+
+	Client.current_packet += packet;
+	while ((newline_pos = Client.current_packet.find('\n')) != std::string::npos)
+	{
+		current_command = Client.current_packet.substr(0, newline_pos);
+		//current_command.erase(current_command.find('\r'));
+		//std::cout << "(" << Client.current_packet << ")" << std::endl;
+		Client.current_packet.erase(0, newline_pos + 1);
+		std::vector<std::string> split_packet = string_split(current_command, ' ');
+		// Je suis pas sûr qu'on ait besoin de check ça
+		// if (split_packet.size() > 0)
+		// {
+			if ((command_index = get_command_index(split_packet[0])) >= 0)
+				g_commands_functions[command_index](split_packet);
+			else
+				send(client_fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
+		// }
+		// else
+		// 	send(client_fd, "Error: no input command\n", strlen("Error: no input command\n"), 0);
+	}
+}
 int Server::create_server_descriptor(void) const
 {
 	int server_fd, sockopt_reuseaddr_val;
@@ -88,115 +197,99 @@ int Server::create_server_descriptor(void) const
 	return (server_fd);
 }
 
-void	Server::add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds)
+//overwrite sur un descriptor qui a ete remove (mis a -1)
+void    Server::add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, struct pollfd *pfds, nfds_t &nb_pfds)
 {
-    pfds[*nb_pfds].fd = fd;
-    pfds[*nb_pfds].events = POLLIN;
-    pfds[*nb_pfds].revents = 0;
-    *nb_pfds += 1;
+	nfds_t i = 0;
+
+	while (i < nb_pfds)
+	{
+		if (pfds[i].fd == -1)
+			break ;
+		i++;
+	}
+	std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nb_pfds=" << nb_pfds + 1 << std::endl;
+	if (Clients)
+		bzero(&Clients[i - 1], sizeof(ClientsMonitoringList));
+    pfds[i].fd = fd;
+    pfds[i].events = POLLIN;
+    nb_pfds++;
 }
 
+void    Server::remove_descriptor_from_poll(struct pollfd &pfds, nfds_t &nb_pfds)
+{
+	pfds.fd = -1;
+	pfds.events = 0;
+	pfds.revents = 0;
+	nb_pfds--;
+}
 int		Server::monitor_clients(int server_fd)
 {
-	// en c++ une classe, c'est exactement comme une structure presque (vérifie sur internet tu verras), et le truc
-	// c'est que ClientsMonitoringList hérite de pollfd donc c'est comme si c'était pollfd. Et ça marche.
-	// Sauf que poll arrive pas à gérer ça, je comprends pas pq il arrive juste pas à changer la valeurs des variables revents
-	// pour chaque client, et du coup bah le programme marche que si tu laisses Clients avec le type pollfd au lieu de
-	// ClientsMonitoringList. Je suis un peu deg :/ Si tu veux chercher une autre méthode de structurer tout ça pour qu'on puisse
-	// tout regrouper par client, ça serait cool. 
-	// Je te laisse la fonction monitor_clients comme ça, c'est juste une version simplifiée sans les messages d'erreurs et sans
-	// le recv du code en commentaire juste en dessous. Comme ça tu pourras expérimenter des trucs si tu veux pour mieux
-	// comprendre comment la boucle de monitoring fonctionne (poll, accept, recv)
-
-	// ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS];
-	struct pollfd Clients[MAX_CLIENT_CONNEXIONS];
-	nfds_t nb_clients = 0;
-
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
-	while (1)
-	{
-		int nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1);
-		for (int i = 0; i < nb_clients; i++)
-		{
-			if (Clients[i].revents & POLLIN)
-			{
-				if (i == 0)
-				{
-					int client_fd = accept(server_fd, NULL, NULL);
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
-				}
-				else
-				{
-					std::cout << "Message reçu, et j'exit() parce que je sais pas quoi faire!" << std::endl;
-					exit(0);
-				}
-			}
-		}
-	}
-	/*
-	// struct pollfd	Clients[MAX_CLIENT_CONNEXIONS];
-	ClientsMonitoringList	Clients[MAX_CLIENT_CONNEXIONS];
+	struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
+	ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS - 1];
 	nfds_t nb_clients = 0;
     int nb_ready_clients, client_fd;
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
     //on ajoute server_fd au tableau pollfd requis pour poll
-	add_descriptor_to_poll(server_fd, Clients, &nb_clients);
+	add_descriptor_to_poll(server_fd, NULL, pfds, nb_clients);
+	print_pfds(pfds, nb_clients);
 	while (1)
 	{
-		if ((nb_ready_clients = poll(static_cast<struct pollfd *>(Clients), nb_clients, -1)) == -1)
+		if ((nb_ready_clients = poll(pfds, nb_clients, -1)) == -1)
 		{
 			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
 			break ;
 		}
 		for (nfds_t i = 0; i < nb_clients; i++)
 		{
-			if (Clients[i].revents & POLLIN)
+			if (pfds[i].revents & POLLIN)
 			{
 				// 0 étant l'index dans le tableau pfds pour server_fd
 				if (i == 0)
 				{
-						std::cout << "ALLO" << std::endl;
                     // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
 					if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 					{
 						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
 						break ;
 					}
-					add_descriptor_to_poll(client_fd, Clients, &nb_clients);
+					add_descriptor_to_poll(client_fd, Clients, pfds, nb_clients);
+					print_pfds(pfds, nb_clients);
 				}
 				else
 				{
-					recv_length = recv(Clients[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
+					recv_length = recv(pfds[i].fd, recv_buf, RECV_BUF_SIZE, 0); 
 					//si y'a une erreur
 					if (recv_length < 0)
 					{
-						if (recv_length == -1)
-							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						break ;
+						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[i].events << " revents=" << pfds[i].revents << std::endl;
+						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
+						continue ;
 					}
 					//la connexion s'est coupée, EOF, on supprime donc le fd
 					else if (recv_length == 0)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						close(Clients[i].fd);
-						remove_descriptor_from_poll(Clients[i].fd, Clients, &nb_clients);
+						close(pfds[i].fd);
+						remove_descriptor_from_poll(pfds[i], nb_clients);
+						print_pfds(pfds, nb_clients);
 					}
 					//on a reçu un paquet! on l'ouvre :-)
 					else 
 					{
-						std::cout << "RCVEVEVEVE" << std::endl;
 						recv_buf[recv_length] = 0;
-						parse_client_packet(Clients[i], recv_buf);
-						// send_msg_to_all_fds(pfds, recv_buf, recv_length, nb_pfds, pfds[i].fd);
+						parse_client_packet(Clients[i - 1], client_fd, recv_buf);
 					}
 				}
 			}
 		}
 	}
 	return (ERROR);
-	*/
 }
 
 int Server::launch(void)

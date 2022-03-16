@@ -49,7 +49,8 @@ class Server
 		int				launch(void); // const ?
 		int				create_server_descriptor(void) const;
 		int				monitor_clients(int server_fd); // const ?
-		void			add_descriptor_to_poll(int fd, struct pollfd *pfds, nfds_t *nb_pfds); // const ?
+		void			add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, struct pollfd *pfds, nfds_t &nb_pfds); // const ?
+		void			remove_descriptor_from_poll(struct pollfd &pfds, nfds_t &nb_pfds);
 };
 
 #endif
