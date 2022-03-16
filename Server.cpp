@@ -25,6 +25,28 @@ Server::~Server()
 // 	return (this->_password);
 // }
 
+void	print_pfds(struct pollfd *pfds, nfds_t npfds)
+{
+	std::cout << "\n#-------- pfds list ---------#\n";
+	std::cout << "pfds[" << 0 << "]" << std::endl;
+	std::cout << "	fd=" << pfds[0].fd << std::endl;
+	std::cout << "	events=" << pfds[0].events << std::endl;
+	std::cout << "	revents=" << pfds[0].revents << std::endl;
+	for (int i = 1; i < npfds; i++)
+	{
+		if (pfds[i].fd == -1)
+		{
+			npfds++;
+			continue ;
+		}
+		std::cout << std::endl << "pfds[" << i << "]" << std::endl;
+		std::cout << "	fd=" << pfds[i].fd << std::endl;
+		std::cout << "	events=" << pfds[i].events << std::endl;
+		std::cout << "	revents=" << pfds[i].revents << std::endl;
+	}
+	std::cout << "#----------------------------#\n\n";
+}
+
 std::vector<std::string> string_split(std::string s, const char delimiter)
 {
     size_t start=0;
