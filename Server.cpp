@@ -272,7 +272,8 @@ int Server::launch(void)
 
 	if ((server_fd = create_server_descriptor()) >= 3)
 	{
-		monitor_clients(server_fd);
+		if (monitor_clients(server_fd) == 0)
+			return (0);
 	}
-	return (Server::create_server_descriptor());
+	return (ERROR);
 }
