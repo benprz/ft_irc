@@ -13,6 +13,18 @@
 #define FOREACH_COMMAND(COMMAND) \
         COMMAND(PASS)   \
         COMMAND(NICK)	\
+        COMMAND(USER)	\
+        COMMAND(NAME)	\
+        COMMAND(LIST)	\
+        COMMAND(JOIN)	\
+        COMMAND(OPER)	\
+        COMMAND(PART)	\
+        COMMAND(QUIT)	\
+        COMMAND(SQUIT)	\
+        COMMAND(MODE)	\
+        COMMAND(PING)	\
+        COMMAND(KICK)	\
+        COMMAND(KILL)	\
 		COMMAND(NB_COMMANDS)
 
 #define GENERATE_ENUM(ENUM) ENUM,

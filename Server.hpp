@@ -29,34 +29,6 @@
 #define RECV_BUF_SIZE 1024
 #define PASSWORD "sylben123"
 
-#define FOREACH_COMMAND(COMMAND) \
-        COMMAND(PASS)   \
-        COMMAND(NICK)	\
-        COMMAND(USER)	\
-        COMMAND(NAME)	\
-        COMMAND(LIST)	\
-        COMMAND(JOIN)	\
-        COMMAND(OPER)	\
-        COMMAND(PART)	\
-        COMMAND(QUIT)	\
-        COMMAND(SQUIT)	\
-        COMMAND(MODE)	\
-        COMMAND(PING)	\
-        COMMAND(KICK)	\
-        COMMAND(KILL)	\
-		COMMAND(NB_COMMANDS)
-
-#define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
-
-enum COMMAND_ENUM {
-    FOREACH_COMMAND(GENERATE_ENUM)
-};
-
-static const char *g_commands_name[] = {
-    FOREACH_COMMAND(GENERATE_STRING)
-};
-
 class Server
 {
 	private:
