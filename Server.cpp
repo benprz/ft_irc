@@ -1,13 +1,13 @@
 #include "Server.hpp"
 
-Server::Server() : _port(666), _password("dumbpassword")
+Server::Server() : _port(666), _password("dumbpassword") // autre port ?
 {
 	return;
 }
 
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
-	// std::cout << "Intance's port = " << getPort() << " & password = " << getPassword() << std::endl; // del
+	return; // oui ?
 }
 
 Server::~Server()
@@ -15,17 +15,7 @@ Server::~Server()
 	return;
 }
 
-// int Server::getPort() const
-// {
-// 	return (this->_port);
-// }
-
-// std::string Server::getPassword() const
-// {
-// 	return (this->_password);
-// }
-
-void	print_pfds(struct pollfd *pfds, nfds_t npfds)
+void	print_pfds(struct pollfd *pfds, nfds_t npfds) // debug
 {
 	std::cout << "\n#-------- pfds list ---------#\n";
 	std::cout << "pfds[" << 0 << "]" << std::endl;
@@ -47,7 +37,7 @@ void	print_pfds(struct pollfd *pfds, nfds_t npfds)
 	std::cout << "#----------------------------#\n\n";
 }
 
-std::vector<std::string> string_split(std::string s, const char delimiter)
+std::vector<std::string> Server::string_split(std::string s, const char delimiter)
 {
     size_t start=0;
     size_t end=s.find_first_of(delimiter);
@@ -67,23 +57,7 @@ std::vector<std::string> string_split(std::string s, const char delimiter)
     return output;
 }
 
-#define FOREACH_COMMAND(COMMAND) \
-        COMMAND(PASS)   \
-        COMMAND(NICK)	\
-		COMMAND(NB_COMMANDS)
-
-#define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
-
-enum COMMAND_ENUM {
-    FOREACH_COMMAND(GENERATE_ENUM)
-};
-
-static const char *g_commands_name[] = {
-    FOREACH_COMMAND(GENERATE_STRING)
-};
-
-int	get_command_index(std::string command)
+int		Server::get_command_index(std::string command) const
 {
 	for (int i = 0; i < NB_COMMANDS; i++)
 	{
@@ -108,7 +82,7 @@ void	(*g_commands_functions[NB_COMMANDS])(std::vector<std::string>) = {
 	nick_command
 };
 
-void	parse_client_packet(ClientsMonitoringList &Client, int client_fd, std::string packet)
+void	Server::parse_client_packet(ClientsMonitoringList &Client, int client_fd, std::string packet)
 {
 	int	command_index;
 	std::string current_command;
