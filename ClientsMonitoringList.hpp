@@ -29,6 +29,7 @@
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
+#define GENERATE_FUNCTION(FUNCTION) (void (ClientsMonitoringList::*))#FUNCTION,
 
 enum COMMAND_ENUM {
     FOREACH_COMMAND(GENERATE_ENUM)
@@ -38,13 +39,6 @@ static const char *g_commands_name[] = {
     FOREACH_COMMAND(GENERATE_STRING)
 };
 
-/*
-void	(ClientsMonitoringList::*g_commands_functions[NB_COMMANDS])(std::vector<std::string>) = {
-	ClientsMonitoringList::pass_command,
-	ClientsMonitoringList::nick_command
-};
-*/
-
 class ClientsMonitoringList
 {
 	private:
@@ -53,17 +47,25 @@ class ClientsMonitoringList
         std::string _current_packet;
 
 	public:
+		//segfault pour des raisons inconnues, donc inutile de l'utiliser pour l'instant
+		void (ClientsMonitoringList::*commands_functions[NB_COMMANDS])(std::vector<std::string>);
 
-		ClientsMonitoringList() {};
+		ClientsMonitoringList()
+		{
+			commands_functions[0] = &ClientsMonitoringList::PASS;
+			commands_functions[1] = &ClientsMonitoringList::NICK;
+		};
+
 		~ClientsMonitoringList() {};
 
 		void	parse_client_packet(int client_fd, std::string packet);
+		int		get_command_index(std::string command);
 		void	do_command(std::string command, std::vector<std::string> split_packet);
 		int		is_command(std::string command);
 
 		// commands
-		void	nick_command(std::vector<std::string> split_packet);
-		void	pass_command(std::vector<std::string> split_packet);
+		void	PASS(std::vector<std::string> split_packet);
+		void	NICK(std::vector<std::string> split_packet);
 };
 
 #endif

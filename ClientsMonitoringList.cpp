@@ -1,16 +1,15 @@
 
 #include "ClientsMonitoringList.hpp"
 
-void	ClientsMonitoringList::pass_command(std::vector<std::string> split_packet)
+void	ClientsMonitoringList::PASS(std::vector<std::string> split_packet)
 {
 	std::cout << "pass command!" << std::endl;
 }
 
-void	ClientsMonitoringList::nick_command(std::vector<std::string> split_packet)
+void	ClientsMonitoringList::NICK(std::vector<std::string> split_packet)
 {
 	std::cout << "nick command!" << std::endl;
 }
-
 
 std::vector<std::string> string_split(std::string s, const char delimiter)
 {
@@ -32,17 +31,6 @@ std::vector<std::string> string_split(std::string s, const char delimiter)
     return output;
 }
 
-/*
-int	get_command_index(std::string command)
-{
-	for (int i = 0; i < NB_COMMANDS; i++)
-	{
-		if (command == g_commands_name[i])
-			return (i);
-	}
-	return (-1);
-}
-*/
 
 int		ClientsMonitoringList::is_command(std::string command)
 {
@@ -57,9 +45,9 @@ int		ClientsMonitoringList::is_command(std::string command)
 void	ClientsMonitoringList::do_command(std::string command, std::vector<std::string> split_packet)
 {
 	if (command == "PASS")
-		pass_command(split_packet);
+		PASS(split_packet);
 	else if (command == "NICK")
-		nick_command(split_packet);
+		NICK(split_packet);
 }
 
 void	ClientsMonitoringList::parse_client_packet(int client_fd, std::string packet)
@@ -79,8 +67,39 @@ void	ClientsMonitoringList::parse_client_packet(int client_fd, std::string packe
 			send(client_fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
 	}
 }
+	/*
+int	ClientsMonitoringList::get_command_index(std::string command)
+{
+	for (int i = 0; i < NB_COMMANDS; i++)
+	{
+		if (command == g_commands_name[i])
+			return (i);
+	}
+	return (-1);
+}
 
-/*
+void	ClientsMonitoringList::parse_client_packet(int client_fd, std::string packet)
+{
+	int	command_index;
+	std::string current_command;
+	int	newline_pos;
+
+	_current_packet += packet;
+	while ((newline_pos = _current_packet.find('\n')) != std::string::npos)
+	{
+		current_command = _current_packet.substr(0, newline_pos);
+		_current_packet.erase(0, newline_pos + 1);
+		std::vector<std::string> split_packet = string_split(current_command, ' ');
+		if ((command_index = get_command_index(split_packet[0])) >= 0)
+		{
+			std::cout << "command_index=" << command_index << std::endl;
+			(this->*g_commands_functions[command_index])(split_packet);
+		}
+		else
+			send(client_fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
+	}
+}
+
 // Je ferai mieux cette commande une fois que ça sera réglé
 void	ClientsMonitoringList::parse_client_packet(int client_fd, std::string packet)
 {

@@ -49,9 +49,6 @@ class Server
 		int	monitor_clients(int server_fd); // const ?
 		void add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, struct pollfd *pfds, nfds_t &nb_pfds); // const ?
 		void remove_descriptor_from_poll(struct pollfd &pfds, nfds_t &nb_pfds);
-		void parse_client_packet(ClientsMonitoringList &Client, int client_fd, std::string packet); // const ?
-		std::vector<std::string> string_split(std::string s, const char delimiter); // const ?
-		int	get_command_index(std::string command) const;
 		// void pass_command(std::vector<std::string> split_packet); // const ?
 		// void nick_command(std::vector<std::string> split_packet); // const ?
 		// void (*g_commands_functions[NB_COMMANDS])(std::vector<std::string>);
