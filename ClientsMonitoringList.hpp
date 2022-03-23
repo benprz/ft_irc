@@ -9,63 +9,57 @@
 #include <sys/socket.h>
 
 #define MAX_CLIENT_CONNEXIONS 100
+#define RPL_WELCOME "001"
+#define ERR_NONICKNAMEGIVEN "431"
+#define ERR_ERRONEUSNICKNAME "432"
+#define ERR_NICKNAMEINUSE "433"
+#define ERR_NOTREGISTERED "451"
+#define ERR_NEEDMOREPARAMS "461"
+#define ERR_ALREADYREGISTRED "462"
 
-#define FOREACH_COMMAND(COMMAND) \
-        COMMAND(PASS)   \
-        COMMAND(NICK)	\
-        COMMAND(USER)	\
-        COMMAND(NAME)	\
-        COMMAND(LIST)	\
-        COMMAND(JOIN)	\
-        COMMAND(OPER)	\
-        COMMAND(PART)	\
-        COMMAND(QUIT)	\
-        COMMAND(SQUIT)	\
-        COMMAND(MODE)	\
-        COMMAND(PING)	\
-        COMMAND(KICK)	\
-        COMMAND(KILL)	\
-		COMMAND(NB_COMMANDS)
-
-#define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
-#define GENERATE_FUNCTION(FUNCTION) (void (ClientsMonitoringList::*))#FUNCTION,
-
-enum COMMAND_ENUM {
-    FOREACH_COMMAND(GENERATE_ENUM)
-};
+#define CRLF "\r\n"
 
 static const char *g_commands_name[] = {
-    FOREACH_COMMAND(GENERATE_STRING)
+	"PASS",
+	"NICK",
+	"USER",
+	NULL
 };
 
 class ClientsMonitoringList
 {
 	private:
-        bool _registered;
-        std::string _nickname;
+		int _fd;
         std::string _current_packet;
 
+		bool _logged;
+        bool _registered;
+        std::string _nickname;
+		std::string _username;
+		std::string _realname;
+		std::string _hostname;
+		std::string	_mode;
+
 	public:
-		//segfault pour des raisons inconnues, donc inutile de l'utiliser pour l'instant
-		void (ClientsMonitoringList::*commands_functions[NB_COMMANDS])(std::vector<std::string>);
+	 	class ClientsMonitoringList *prev;
+	 	class ClientsMonitoringList *next;
 
-		ClientsMonitoringList()
-		{
-			commands_functions[0] = &ClientsMonitoringList::PASS;
-			commands_functions[1] = &ClientsMonitoringList::NICK;
-		};
-
+		std::string	getNickname() { return _nickname; };
+		void		setFd(int fd) { _fd = fd; };
 		~ClientsMonitoringList() {};
 
-		void	parse_client_packet(int client_fd, std::string packet);
+		void	parse_client_packet(std::string packet, const std::string password);
 		int		get_command_index(std::string command);
-		void	do_command(std::string command, std::vector<std::string> split_packet);
+		void	do_command(std::vector<std::string> split_packet, const std::string password);
 		int		is_command(std::string command);
+		void	send_message(std::string error);
+		int		check_if_nickname_is_erroneous(std::string split_packet);
+		int		check_if_nickname_is_already_used(std::string nickname);
 
 		// commands
-		void	PASS(std::vector<std::string> split_packet);
+		void	PASS(const std::vector<std::string> split_packet, const std::string password);
 		void	NICK(std::vector<std::string> split_packet);
+		void	USER(std::vector<std::string> split_packet);
 };
 
 #endif

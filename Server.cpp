@@ -1,19 +1,16 @@
 #include "Server.hpp"
 #include "ClientsMonitoringList.hpp"
 
-Server::Server() : _port(666), _password("dumbpassword") // autre port ?
+Server::Server() : _port(666), _password("dumbpassword")
 {
-	return;
 }
 
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
-	return; // oui ?
 }
 
 Server::~Server()
 {
-	return;
 }
 
 void	print_pfds(struct pollfd *pfds, nfds_t npfds) // debug
@@ -113,29 +110,38 @@ void    Server::add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, s
 		i++;
 	}
 	std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nb_pfds=" << nb_pfds + 1 << std::endl;
-	if (Clients)
-		bzero(&Clients[i - 1], sizeof(ClientsMonitoringList));
+	if (i > 0)
+	{
+		bzero(&Clients[i], sizeof(ClientsMonitoringList));
+		Clients[i].setFd(fd);
+		Clients[i + 1].next = &Clients[i];
+		if (i > 1)
+			Clients[i].prev = &Clients[i - 1];
+	}
     pfds[i].fd = fd;
     pfds[i].events = POLLIN;
     nb_pfds++;
 }
 
-void    Server::remove_descriptor_from_poll(struct pollfd &pfds, nfds_t &nb_pfds)
+void    Server::remove_descriptor_from_poll(ClientsMonitoringList &Client, struct pollfd &pfd, nfds_t &nb_pfds)
 {
-	pfds.fd = -1;
-	pfds.events = 0;
-	pfds.revents = 0;
+	Client.setFd(-1);
+	pfd.fd = -1;
+	pfd.events = 0;
+	pfd.revents = 0;
 	nb_pfds--;
 }
+
 int		Server::monitor_clients(int server_fd)
 {
 	struct pollfd pfds[MAX_CLIENT_CONNEXIONS];
-	ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS - 1];
+	ClientsMonitoringList Clients[MAX_CLIENT_CONNEXIONS];
 	nfds_t nb_clients = 0;
     int nb_ready_clients, client_fd;
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
+	bzero(Clients, sizeof(Clients));
     //on ajoute server_fd au tableau pollfd requis pour poll
 	add_descriptor_to_poll(server_fd, NULL, pfds, nb_clients);
 	print_pfds(pfds, nb_clients);
@@ -171,7 +177,7 @@ int		Server::monitor_clients(int server_fd)
 						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[i].events << " revents=" << pfds[i].revents << std::endl;
 						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
 						close(pfds[i].fd);
-						remove_descriptor_from_poll(pfds[i], nb_clients);
+						remove_descriptor_from_poll(Clients[i], pfds[i], nb_clients);
 						print_pfds(pfds, nb_clients);
 						continue ;
 					}
@@ -180,14 +186,14 @@ int		Server::monitor_clients(int server_fd)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
 						close(pfds[i].fd);
-						remove_descriptor_from_poll(pfds[i], nb_clients);
+						remove_descriptor_from_poll(Clients[i], pfds[i], nb_clients);
 						print_pfds(pfds, nb_clients);
 					}
 					//on a reçu un paquet! on l'ouvre :-)
 					else 
 					{
 						recv_buf[recv_length] = 0;
-						Clients[i - 1].parse_client_packet(client_fd, recv_buf);
+						Clients[i].parse_client_packet(recv_buf, _password);
 					}
 				}
 			}
