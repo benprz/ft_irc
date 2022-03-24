@@ -114,7 +114,7 @@ void    Server::add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, s
 	{
 		bzero(&Clients[i], sizeof(ClientsMonitoringList));
 		Clients[i].setFd(fd);
-		Clients[i + 1].next = &Clients[i];
+		Clients[i - 1].next = &Clients[i];
 		if (i > 1)
 			Clients[i].prev = &Clients[i - 1];
 	}
