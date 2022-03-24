@@ -16,6 +16,8 @@ void	ClientsMonitoringList::send_message(std::string numeric_reply)
 		message = numeric_reply + " :Unauthorized command (already registered)";
 	else if (numeric_reply == ERR_NONICKNAMEGIVEN)
 		message = numeric_reply + " :No nickname given";
+	else if (numeric_reply == ERR_PASSWDMISMATCH)
+		message = numeric_reply + " :Password incorrect";
 	message += CRLF;
 	send(_fd, message.c_str(), message.size(), 0);
 }
@@ -32,6 +34,8 @@ void	ClientsMonitoringList::PASS(const std::vector<std::string> split_packet, co
 				_logged = 1;
 				std::cout << _fd << " logged!" << std::endl;
 			}
+			else
+				send_message(ERR_PASSWDMISMATCH);
 		}
 	}
 	else

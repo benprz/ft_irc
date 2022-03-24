@@ -16,6 +16,7 @@
 #define ERR_NOTREGISTERED "451"
 #define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTRED "462"
+#define ERR_PASSWDMISMATCH "464"
 
 #define CRLF "\r\n"
 
@@ -23,6 +24,7 @@ static const char *g_commands_name[] = {
 	"PASS",
 	"NICK",
 	"USER",
+	"OPER",
 	NULL
 };
 
@@ -60,6 +62,7 @@ class ClientsMonitoringList
 		void	PASS(const std::vector<std::string> split_packet, const std::string password);
 		void	NICK(std::vector<std::string> split_packet);
 		void	USER(std::vector<std::string> split_packet);
+		void	OPER(std::vector<std::string> split_packet);
 };
 
 #endif
