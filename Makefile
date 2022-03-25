@@ -1,30 +1,37 @@
 #MAKEFLAGS += --silent
 
-NAME		= ircserv
+NAME = ircserv
+CC = clang++
+CPPFLAGS = -g3 -std=c++98
+INC_DIR = inc/
+INC =	ClientsMonitoringList.hpp \
+		Server.hpp
 
-CC			= c++
+SRC_DIR = src/
+SRC =	main.cpp \
+		ClientsMonitoringList.cpp \
+		Server.cpp
 
-CPPFLAGS	= -g3 -std=c++98
+OBJ_DIR = .obj/
+OBJ = $(SRC:%.cpp=$(OBJ_DIR)%.o)
 
-SRCS		=	$(wildcard *.cpp)
+.PHONY : all clean fclean re exec
 
-HEADER		=	$(wildcard *.hpp)
+all: $(NAME)
 
-.PHONY		:	all clean fclean re exec
+$(NAME): $(OBJ)
+	$(CC) $(CFLAGS) -I$(INC_DIR) $(OBJ) -o $(NAME)
 
-all			:	$(NAME) exec
+$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp $(addprefix $(INC_DIR),$(INC))
+	mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) -I$(INC_DIR) -c $< -o $@
 
-$(NAME)		:	$(SRCS) $(HEADER)
-				$(CC) $(CPPFLAGS) $(SRCS) -o $(NAME)
+clean:
+	/bin/rm -rf $(OBJ_DIR)
 
-exec		:
-				./$(NAME) 16385 pw123
+fclean: clean
+	/bin/rm -f $(NAME)
 
-clean		:
-				rm -rf $(NAME)
-
-fclean		:	clean
-
-re			: 
-				$(MAKE) fclean
-				$(MAKE) all
+re: 
+	$(MAKE) fclean
+	$(MAKE) all

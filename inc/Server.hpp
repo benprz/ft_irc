@@ -27,7 +27,6 @@
 #define IP_ADDR "127.0.0.1"
 #define SOCK_TYPE SOCK_STREAM
 #define RECV_BUF_SIZE 1024
-#define PASSWORD "sylben123"
 
 class Server
 {
@@ -49,9 +48,6 @@ class Server
 		int	monitor_clients(int server_fd); // const ?
 		void add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, struct pollfd *pfds, nfds_t &nb_pfds); // const ?
 		void remove_descriptor_from_poll(ClientsMonitoringList &Client, struct pollfd &pfds, nfds_t &nb_pfds);
-		// void pass_command(std::vector<std::string> split_packet); // const ?
-		// void nick_command(std::vector<std::string> split_packet); // const ?
-		// void (*g_commands_functions[NB_COMMANDS])(std::vector<std::string>);
 
 };
 
