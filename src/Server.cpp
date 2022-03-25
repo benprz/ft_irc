@@ -1,5 +1,5 @@
-#include "Server.hpp"
-#include "ClientsMonitoringList.hpp"
+#include "../inc/Server.hpp"
+#include "../inc/ClientsMonitoringList.hpp"
 
 Server::Server() : _port(666), _password("dumbpassword")
 {

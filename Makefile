@@ -1,30 +1,46 @@
-#MAKEFLAGS += --silent
+NAME =	irc
 
-NAME		= ircserv
+SRCSPATH =	src/
+#DEBUGPATH =	debug/
+INCPATH =	inc/
 
-CC			= c++
+#---------	INCLUDES --
+INCLUDES =				$(INCPATH)ClientsMonitoringList.hpp \
+						$(INCPATH)Server.hpp
 
-CPPFLAGS	= -g3 -std=c++98
+#--------	SRCS --
+SRCS = 		$(SRCSPATH)main.cpp \
+					$(SRCSPATH)ClientsMonitoringList.cpp \
+					$(SRCSPATH)Server.cpp \
 
-SRCS		=	$(wildcard *.cpp)
+#--------	COMP --
 
-HEADER		=	$(wildcard *.hpp)
+CC =		clang++
 
-.PHONY		:	all clean fclean re exec
+CFLAGSPROD	= -Wall -Wextra -Werror -std=c++98
+CFLAGS		= -Wall -Wextra -Werror
+CFLAGSPADD	= -Wpadded
+CFLAGSSAN	=
+ACTIVES_FLAGS = $(CFLAGSSAN) $(CFLAGSPROD)
 
-all			:	$(NAME) exec
+OBJS = ${SRCS:.cpp=.o}
 
-$(NAME)		:	$(SRCS) $(HEADER)
-				$(CC) $(CPPFLAGS) $(SRCS) -o $(NAME)
+$(NAME):	$(OBJS) $(INCLUDES)
+					$(CC) $(CFLAGS) $(CFLAGSSAN) $(OBJS) -o $(NAME)
 
-exec		:
-				./$(NAME) 16385 pw123
+$(OBJS):	$(INCLUDES)
 
-clean		:
-				rm -rf $(NAME)
+all:		$(NAME)
 
-fclean		:	clean
+launch:		$(NAME)
+					./$(NAME)
 
-re			: 
-				$(MAKE) fclean
-				$(MAKE) all
+clean:
+			${RM} $(OBJS)
+
+fclean:		clean
+			${RM} $(NAME).a $(NAME)
+
+re:			fclean all
+
+.PHONY: clear
