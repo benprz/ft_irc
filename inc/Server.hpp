@@ -1,8 +1,6 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "ClientsMonitoringList.hpp"
-
 #include <iostream>
 #include <vector>
 
@@ -20,35 +18,93 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-#define ERROR -1 // je trouve -1 plus logique perso
+//#include "ChannelsList.hpp"
+
+#define ERROR -1
 #define PROTO "TCP"
-#define PORT 16385
 #define SOCK_DOMAIN AF_INET
-#define IP_ADDR "127.0.0.1"
 #define SOCK_TYPE SOCK_STREAM
-#define RECV_BUF_SIZE 1024
+#define RECV_BUF_SIZE 512
+
+#define MAX_ALLOWED_CLIENTS 100
+#define OPER_HOST 1
+#define OPER_PASSWD "oper123"
+
+#define CRLF "\r\n"
+
+static const char *g_commands_name[] = {
+	"PASS",
+	"NICK",
+	"USER",
+	"OPER",
+	"JOIN",
+	NULL
+};
+
+class ClientsMonitoringList
+{
+	public:
+		int fd;
+		std::string packet;
+		std::vector<std::string> split_packet;
+
+		bool logged;
+		bool registered;
+		bool oper;
+		std::string nickname;
+		std::string username;
+		std::string realname;
+		std::string hostname;
+		std::string	mode;
+
+		//~ClientsMonitoringList() {};
+};
 
 class Server
 {
 	private:
 
+		int					_server_fd;
 		int const			_port;
 		std::string const	_password;
+
+		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS];
+		//ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
+
 		Server();
 
 	public:
+		struct pollfd 			pfds[MAX_ALLOWED_CLIENTS];
+		nfds_t					nfds;
+		nfds_t					current_pfd;
+		ClientsMonitoringList	*Client;
 
 		Server(int const port, std::string const password);
 		Server(Server const &instance);
 		~Server();
 		Server &operator=(Server const &instance);
 
-		int	launch(void); // const ?
-		int	create_server_descriptor(void) const;
-		int	monitor_clients(int server_fd); // const ?
-		void add_descriptor_to_poll(int fd, ClientsMonitoringList *Clients, struct pollfd *pfds, nfds_t &nb_pfds); // const ?
-		void remove_descriptor_from_poll(ClientsMonitoringList &Client, struct pollfd &pfds, nfds_t &nb_pfds);
+		void launch(void);
+		int	create_server_fd(void) const;
+		void add_descriptor_to_poll(int fd);
+		void remove_descriptor_from_poll();
+		void printpfds(); // debug
 
+		void	parse_client_packet(std::string packet);
+		std::vector<std::string> string_split(std::string s, const char delimiter);
+		int		is_command();
+		void	do_command();
+
+		int		check_if_nickname_is_erroneous(std::string split_packet);
+		int		check_if_nickname_is_already_used(std::string nickname);
+		void	send_message(std::string error);
+
+		// commands
+		void	PASS();
+		void	NICK();
+		void	USER();
+		void	OPER();
+		void	JOIN();
 };
 
 #endif
