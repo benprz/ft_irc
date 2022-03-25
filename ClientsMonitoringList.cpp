@@ -115,14 +115,13 @@ void	ClientsMonitoringList::USER(std::vector<std::string> split_packet)
 void	ClientsMonitoringList::QUIT(const std::vector<std::string> split_packet)
 {
 	std::cout << "quit command!" << std::endl; // del
-	if (!_logged)
+	if (_logged)
 	{
 		if (split_packet.size() >= 2)
-		{
-			// au lieu du nick, ecrire le message ajoute en parametre
-		}
+			std::cout << split_packet[1] << std::endl;
 		else
-			// ecrire le nick et qu'il a quitte le server mais comment retrouver le nick ? (avec un fd ?)
+			std::cout << getNickname() << " quits the server" << std::endl;
+		// remove_descriptor_from_poll() i guess but need to be able to access the parameters needed to call it
 	}
 }
 
@@ -151,7 +150,7 @@ int		ClientsMonitoringList::is_command(std::string command)
 {
 	for (int i = 0; g_commands_name[i]; i++)
 	{
-		if (command == "PASS" || command == "NICK" || command == "USER")
+		if (command == "PASS" || command == "NICK" || command == "USER" || command == "QUIT")
 			return (1);
 		else if (_registered && command == g_commands_name[i])
 			return (1);
