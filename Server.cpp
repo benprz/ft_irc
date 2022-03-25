@@ -1,7 +1,6 @@
 #include "Server.hpp"
-#include "ClientsMonitoringList.hpp"
 
-Server::Server() : _port(666), _password("dumbpassword")
+Server::Server() : _port(666), _password("dumbpassword") // syl : j'ai mis 666 comme ca, il faut peut-etre mettre autre chose
 {
 }
 

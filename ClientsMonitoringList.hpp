@@ -60,6 +60,7 @@ class ClientsMonitoringList
 		void	PASS(const std::vector<std::string> split_packet, const std::string password);
 		void	NICK(std::vector<std::string> split_packet);
 		void	USER(std::vector<std::string> split_packet);
+		void	QUIT(const std::vector<std::string> split_packet); // const ?
 };
 
 #endif

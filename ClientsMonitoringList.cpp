@@ -22,7 +22,7 @@ void	ClientsMonitoringList::send_message(std::string numeric_reply)
 
 void	ClientsMonitoringList::PASS(const std::vector<std::string> split_packet, const std::string password)
 {
-	std::cout << "pass command!" << std::endl;
+	std::cout << "pass command!" << std::endl; // del
 	if (!_logged)
 	{
 		if (split_packet.size() >= 2)
@@ -66,7 +66,7 @@ int		ClientsMonitoringList::check_if_nickname_is_erroneous(std::string nickname)
 
 void	ClientsMonitoringList::NICK(std::vector<std::string> split_packet)
 {
-	std::cout << "nick command!" << std::endl;
+	std::cout << "nick command!" << std::endl; // del
 	if (!_logged)
 		send_message(ERR_NOTREGISTERED);
 	else if (split_packet.size() < 2)
@@ -86,7 +86,7 @@ void	ClientsMonitoringList::NICK(std::vector<std::string> split_packet)
 
 void	ClientsMonitoringList::USER(std::vector<std::string> split_packet)
 {
-	std::cout << "user command!" << std::endl;
+	std::cout << "user command!" << std::endl; // del
 	if (!_logged)
 		send_message(ERR_NOTREGISTERED);
 	else if (split_packet.size() < 5)
@@ -110,6 +110,20 @@ void	ClientsMonitoringList::USER(std::vector<std::string> split_packet)
 			send_message(RPL_WELCOME);
 	}
 
+}
+
+void	ClientsMonitoringList::QUIT(const std::vector<std::string> split_packet)
+{
+	std::cout << "quit command!" << std::endl; // del
+	if (!_logged)
+	{
+		if (split_packet.size() >= 2)
+		{
+			// au lieu du nick, ecrire le message ajoute en parametre
+		}
+		else
+			// ecrire le nick et qu'il a quitte le server mais comment retrouver le nick ? (avec un fd ?)
+	}
 }
 
 std::vector<std::string> string_split(std::string s, const char delimiter)
@@ -154,6 +168,8 @@ void	ClientsMonitoringList::do_command(std::vector<std::string> split_packet, co
 		NICK(split_packet);
 	else if (c == "USER")
 		USER(split_packet);
+	else if (c == "QUIT")
+		QUIT(split_packet);
 }
 
 void	ClientsMonitoringList::parse_client_packet(std::string packet, const std::string password)
