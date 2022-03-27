@@ -101,6 +101,7 @@ class Server
 		void	USER();
 		void	OPER();
 		void	JOIN();
+		void	QUIT();
 };
 
 #endif
