@@ -15,6 +15,7 @@ Server::Server(int const port, std::string const password) : _port(port), _passw
 
 Server::~Server()
 {
+	close(_server_fd);
 }
 
 void	Server::printpfds() // debug
@@ -105,7 +106,7 @@ int Server::create_server_fd(void) const
 }
 
 //overwrite sur un descriptor qui a ete remove (mis a -1)
-void    Server::add_descriptor_to_poll(int fd)
+void    Server::add_client(int fd)
 {
 	nfds_t i = 0;
 
@@ -124,15 +125,18 @@ void    Server::add_descriptor_to_poll(int fd)
     pfds[i].fd = fd;
     pfds[i].events = POLLIN;
     nfds++;
+	printpfds();
 }
 
-void    Server::remove_descriptor_from_poll()
+void    Server::remove_client()
 {
+	close(pfds[current_pfd].fd);
 	_Clients[current_pfd].fd = -1;
 	pfds[current_pfd].fd = -1;
 	pfds[current_pfd].events = 0;
 	pfds[current_pfd].revents = 0;
 	nfds--;
+	printpfds();
 }
 
 void Server::launch(void)
@@ -142,8 +146,7 @@ void Server::launch(void)
 	ssize_t	recv_length;
 
     //on ajoute server_fd au tableau pollfd requis pour poll
-	add_descriptor_to_poll(_server_fd);
-	printpfds();
+	add_client(_server_fd);
 	while (1)
 	{
 		if ((nb_ready_clients = poll(pfds, nfds, -1)) == -1)
@@ -164,8 +167,7 @@ void Server::launch(void)
 						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
 						break ;
 					}
-					add_descriptor_to_poll(client_fd);
-					printpfds();
+					add_client(client_fd);
 				}
 				else
 				{
@@ -175,18 +177,14 @@ void Server::launch(void)
 					{
 						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[current_pfd].events << " revents=" << pfds[current_pfd].revents << std::endl;
 						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						close(pfds[current_pfd].fd);
-						remove_descriptor_from_poll();
-						printpfds();
+						remove_client();
 						continue ;
 					}
 					//la connexion s'est coupée, EOF, on supprime donc le fd
 					else if (recv_length == 0)
 					{
 						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						close(pfds[current_pfd].fd);
-						remove_descriptor_from_poll();
-						printpfds();
+						remove_client();
 					}
 					//on a reçu un paquet! on l'ouvre :-)
 					else 

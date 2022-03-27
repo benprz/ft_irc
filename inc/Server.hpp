@@ -62,7 +62,7 @@ class Server
 		int const			_port;
 		std::string const	_password;
 
-		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS];
+		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS]; //Le premier client est à [1], le [0] est vide c pour le serveur
 		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
 
 		Server();
@@ -81,8 +81,8 @@ class Server
 
 		void launch(void);
 		int	create_server_fd(void) const;
-		void add_descriptor_to_poll(int fd);
-		void remove_descriptor_from_poll();
+		void add_client(int fd);
+		void remove_client();
 		void printpfds(); // debug
 
 		void	parse_client_packet(std::string packet);
