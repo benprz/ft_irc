@@ -7,8 +7,10 @@ Server::Server() : _port(666), _password("dumbpassword")
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
 	_server_fd = create_server_fd();
+	nfds = 0;
+	nchannels = 0;
 	bzero(_Clients, sizeof(_Clients));
-	//bzero(_Channels, sizeof(_Channels));
+	bzero(_Channels, sizeof(_Channels));
 }
 
 Server::~Server()

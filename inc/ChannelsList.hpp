@@ -3,16 +3,17 @@
 
 #include "Server.hpp"
 
-#include <iostream>
-
-#define MAX_ALLOWED_CHANNELS MAX_ALLOWED_CLIENTS * 10 // * 10 car le max de channels qu'un utilisateur peut creer (ou joindre) est 10
+#define MAX_ALLOWED_CHANNELS_PER_CLIENT 10
+#define MAX_ALLOWED_CHANNELS (MAX_ALLOWED_CLIENTS - 1) * MAX_ALLOWED_CHANNELS_PER_CLIENT //-1 car Clients[0] n'est pas utilisé
 
 class ChannelsList
 {
-    private:
-        std::string _name;
-        std::string _mode;
-        std::string _users[MAX_ALLOWED_CLIENTS];
+    public:
+        std::string name;
+		std::string password;
+        std::string mode;
+		std::vector<int> users;
+		std::vector<int> operators;
 };
 
 #endif

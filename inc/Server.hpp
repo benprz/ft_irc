@@ -18,10 +18,9 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-//#include "ChannelsList.hpp"
-
 #define ERROR -1
 #define PROTO "TCP"
+#define HOSTNAME "localhost"
 #define SOCK_DOMAIN AF_INET
 #define SOCK_TYPE SOCK_STREAM
 #define RECV_BUF_SIZE 512
@@ -32,14 +31,7 @@
 
 #define CRLF "\r\n"
 
-static const char *g_commands_name[] = {
-	"PASS",
-	"NICK",
-	"USER",
-	"OPER",
-	"JOIN",
-	NULL
-};
+#include "ChannelsList.hpp"
 
 class ClientsMonitoringList
 {
@@ -57,6 +49,8 @@ class ClientsMonitoringList
 		std::string hostname;
 		std::string	mode;
 
+		int opened_channels;
+
 		//~ClientsMonitoringList() {};
 };
 
@@ -69,7 +63,7 @@ class Server
 		std::string const	_password;
 
 		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS];
-		//ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
+		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
 
 		Server();
 
@@ -78,6 +72,7 @@ class Server
 		nfds_t					nfds;
 		nfds_t					current_pfd;
 		ClientsMonitoringList	*Client;
+		int						nchannels;
 
 		Server(int const port, std::string const password);
 		Server(Server const &instance);
@@ -92,12 +87,13 @@ class Server
 
 		void	parse_client_packet(std::string packet);
 		std::vector<std::string> string_split(std::string s, const char delimiter);
-		int		is_command();
-		void	do_command();
+		int	parse_command();
+		void		send_message(std::string error);
 
-		int		check_if_nickname_is_erroneous(std::string split_packet);
-		int		check_if_nickname_is_already_used(std::string nickname);
-		void	send_message(std::string error);
+		int			check_if_nickname_is_erroneous(std::string split_packet);
+		int			check_if_nickname_is_already_used(std::string nickname);
+		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
+		int			get_channel_id(std::string channel);
 
 		// commands
 		void	PASS();

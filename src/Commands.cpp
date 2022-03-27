@@ -5,29 +5,43 @@ void	Server::send_message(std::string numeric_reply)
 {
 	std::string message;
 
-	if (numeric_reply == RPL_WELCOME)
+	if (numeric_reply.length() != 3)
+		message = numeric_reply;
+	else
 	{
-		Client->registered = 1;
-		message = numeric_reply + " " + Client->nickname + " :Welcome to the Internet Relay Network <" + Client->nickname + ">!<" + Client->username + ">@<" + Client->hostname + ">";
+		message = static_cast<std::string>(":") + HOSTNAME + " " + numeric_reply + " ";
+		if (numeric_reply == RPL_WELCOME)
+		{
+			Client->registered = 1;
+			message += Client->nickname + " :Welcome to the Internet Relay Network " + Client->nickname + "!" + Client->username + "@" + HOSTNAME;
+		}
+		else if (numeric_reply == RPL_YOUREOPER)
+			message += ":You are now an IRC operator";
+		else if (numeric_reply == ERR_NOTREGISTERED)
+			message += ":You have not registered";
+		else if (numeric_reply == ERR_NEEDMOREPARAMS)
+			message += Client->split_packet[0] + " :Not enough parameters";
+		else if (numeric_reply == ERR_ALREADYREGISTRED)
+			message += ":You may not reregister";
+		else if (numeric_reply == ERR_NONICKNAMEGIVEN)
+			message += ":No nickname given";
+		else if (numeric_reply == ERR_ERRONEUSNICKNAME)
+			message += Client->split_packet[1] + " :Erroneus nickname";
+		else if (numeric_reply == ERR_NICKNAMEINUSE)
+			message += Client->split_packet[1] + " :Nickname is already in use";
+		else if (numeric_reply == ERR_PASSWDMISMATCH)
+			message += ":Password incorrect";
+		else if (numeric_reply == ERR_NOOPERHOST)
+			message += ":No O-lines for your host";
+		else if (numeric_reply == ERR_INVITEONLYCHAN)
+			message += Client->split_packet[1] + " :Cannot join channel (+i)";
+		else if (numeric_reply == ERR_TOOMANYCHANNELS)
+			message += Client->split_packet[1] + " :You have joined too many channels";
+		else if (numeric_reply == ERR_NOSUCHCHANNEL)
+			message += Client->split_packet[1] + " :No such channel";
+		else if (numeric_reply == ERR_BADCHANNELKEY)
+			message += Client->split_packet[1] + " :Cannot join channel (+k)";
 	}
-	else if (numeric_reply == RPL_YOUREOPER)
-		message = numeric_reply + " :You are now an IRC operator";
-	else if (numeric_reply == ERR_NOTREGISTERED)
-		message = numeric_reply + " :You have not registered";
-	else if (numeric_reply == ERR_NEEDMOREPARAMS)
-		message = numeric_reply + " " + Client->split_packet[0] + " :Not enough parameters";
-	else if (numeric_reply == ERR_ALREADYREGISTRED)
-		message = numeric_reply + " :You may not reregister";
-	else if (numeric_reply == ERR_NONICKNAMEGIVEN)
-		message = numeric_reply + " :No nickname given";
-	else if (numeric_reply == ERR_ERRONEUSNICKNAME)
-		message = numeric_reply + " " + Client->split_packet[1] + " :Erroneus nickname";
-	else if (numeric_reply == ERR_NICKNAMEINUSE)
-		message = numeric_reply + " " + Client->split_packet[1] + " :Nickname is already in use";
-	else if (numeric_reply == ERR_PASSWDMISMATCH)
-		message = numeric_reply + " :Password incorrect";
-	else if (numeric_reply == ERR_NOOPERHOST)
-		message = numeric_reply + " :No O-lines for your host";
 
 	message += CRLF;
 	send(Client->fd, message.c_str(), message.size(), 0);
@@ -132,8 +146,70 @@ void	Server::OPER()
 	}
 }
 
+int	Server::get_channel_id(std::string channel)
+{
+	for (int i = 0; i < nchannels; i++)
+	{
+		if (_Channels[i].name == channel)
+			return (i);
+	}
+	return (ERROR);
+}
+
 void	Server::JOIN()
 {
+	if (Client->split_packet.size() < 2)
+		send_message(ERR_NEEDMOREPARAMS);
+	else if (Client->opened_channels == MAX_ALLOWED_CHANNELS_PER_CLIENT)
+		send_message(ERR_TOOMANYCHANNELS);
+	else
+	{
+		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
+		std::vector<std::string> split_passwords;
+		int channel_id;
+		if (Client->split_packet.size() == 3)
+			split_passwords = string_split(Client->split_packet[2], ',');
+		for (int i = 0; i < split_channels.size(); i++)
+		{
+			Client->split_packet[1] = split_channels[i];
+			if (split_channels[i][0] != '#')
+				send_message(ERR_NOSUCHCHANNEL);
+			else
+			{
+				std::string join_message = ":" + get_current_client_prefix() + " JOIN " + split_channels[i];
+				if ((channel_id = get_channel_id(split_channels[i])) != ERROR)
+				{
+					if (_Channels[channel_id].mode.find('k') != std::string::npos)
+					{
+						if (i >= split_passwords.size() || _Channels[channel_id].password != split_passwords[i])
+						{
+							send_message(ERR_BADCHANNELKEY);
+							continue ;
+						}
+					}
+					_Channels[channel_id].users.push_back(current_pfd);
+					for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+					{
+						Client = &_Clients[_Channels[channel_id].users[j]];
+						send_message(join_message);
+					}
+				}
+				else
+				{
+					_Channels[nchannels].name = split_channels[i];
+					if (i < split_passwords.size())
+					{
+						_Channels[nchannels].password = split_passwords[i];
+						_Channels[nchannels].mode += 'k';
+					}
+					_Channels[nchannels].users.push_back(current_pfd);
+					send_message(join_message);
+					_Channels[nchannels].operators.push_back(current_pfd);
+					nchannels++;
+				}
+			}
+		}
+	}
 }
 
 std::vector<std::string> Server::string_split(std::string s, const char delimiter)
@@ -156,20 +232,7 @@ std::vector<std::string> Server::string_split(std::string s, const char delimite
     return output;
 }
 
-int		Server::is_command()
-{
-	std::string command = Client->split_packet[0];
-	for (int i = 0; g_commands_name[i]; i++)
-	{
-		if (command == "PASS" || command == "NICK" || command == "USER")
-			return (1);
-		else if (Client->registered && command == g_commands_name[i])
-			return (1);
-	}
-	return (-1);
-}
-
-void	Server::do_command()
+int	Server::parse_command()
 {
 	std::string command = Client->split_packet[0];
 	if (command == "PASS")
@@ -178,10 +241,21 @@ void	Server::do_command()
 	    NICK();
 	else if (command == "USER")
 		USER();
-	else if (command == "OPER")
-		OPER();
-	else if (command == "JOIN")
-		JOIN();
+	else
+	{
+		if (Client->registered)
+		{
+			if (command == "OPER")
+				OPER();
+			else if (command == "JOIN")
+				JOIN();
+			else
+				return (ERROR);
+		}
+		else
+			return (ERROR);
+	}
+	return (0);
 }
 
 void	Server::parse_client_packet(std::string packet)
@@ -195,11 +269,10 @@ void	Server::parse_client_packet(std::string packet)
 	{
 		current_command = Client->packet.substr(0, newline_pos);
 		current_command.erase(std::remove(current_command.begin(), current_command.end(), '\r'));
+		std::cout << "packet=\"" << Client->packet << "\"\n";
 		Client->packet.erase(0, newline_pos + 1);
 		Client->split_packet = string_split(current_command, ' ');
-		if (is_command() == 1)
-			do_command();
-		else
+		if (parse_command())
 			send(Client->fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
 	}
 }
