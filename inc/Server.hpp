@@ -102,6 +102,7 @@ class Server
 		void	OPER();
 		void	JOIN();
 		void	QUIT();
+		void	SQUIT();
 };
 
 #endif

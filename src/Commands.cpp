@@ -141,8 +141,13 @@ void Server::OPER()
 		send_message(ERR_PASSWDMISMATCH);
 	else
 	{
-		Client->mode += 'o';
+		int i = 1;
+		while (_Clients[i].nickname != Client->split_packet[1] && i <= MAX_ALLOWED_CLIENTS)
+			i++;
+		if (i <= MAX_ALLOWED_CLIENTS)
+		_Clients[i].mode += 'o';
 		send_message(RPL_YOUREOPER);
+		std::cout << _Clients[i].nickname << " " << _Clients[i].mode << std::endl; // del
 	}
 }
 
@@ -250,6 +255,11 @@ void Server::QUIT(void)
 	remove_client();
 }
 
+void Server::SQUIT(void)
+{
+	exit(1);
+}
+
 int Server::parse_command()
 {
 	std::string command = Client->split_packet[0];
@@ -259,8 +269,6 @@ int Server::parse_command()
 		NICK();
 	else if (command == "USER")
 		USER();
-	else if (command == "QUIT")
-		QUIT();
 	else
 	{
 		if (Client->registered)
@@ -269,6 +277,10 @@ int Server::parse_command()
 				OPER();
 			else if (command == "JOIN")
 				JOIN();
+			else if (command == "QUIT")
+				QUIT();
+			else if (command == "SQUIT")
+				SQUIT();
 			else
 				return (ERROR);
 		}
