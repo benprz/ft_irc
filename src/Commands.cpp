@@ -237,6 +237,28 @@ std::vector<std::string> Server::string_split(std::string s, const char delimite
 	return output;
 }
 
+void Server::KILL(void)
+{
+	std::size_t found = Client->mode.rfind("o");
+	if (Client->split_packet.size() < 2)
+		send_message(ERR_NEEDMOREPARAMS);
+	else if (found != std::string::npos)
+	{
+		int i = 1;
+		while (_Clients[i].nickname != Client->split_packet[1] && i <= MAX_ALLOWED_CLIENTS)
+			i++;
+		if (i <= MAX_ALLOWED_CLIENTS)
+		{
+			std::cout << Client->split_packet[2] << std::endl;
+			remove_client(i);
+		}
+		else
+			send_message(ERR_NOSUCHNICK);
+	}
+	else
+		send_message(ERR_NOPRIVILEGES);
+}
+
 void Server::QUIT(void)
 {
 	std::vector<std::string> param = Client->split_packet;
@@ -277,6 +299,8 @@ int Server::parse_command()
 				OPER();
 			else if (command == "JOIN")
 				JOIN();
+			else if (command == "KILL")
+				KILL();
 			else if (command == "QUIT")
 				QUIT();
 			else if (command == "SQUIT")

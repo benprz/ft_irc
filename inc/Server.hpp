@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 
 #include <poll.h>
 #include <sys/types.h>
@@ -13,8 +14,6 @@
 #include <fcntl.h>
 
 #include <stdio.h>
-#include <string.h>
-#include <string.h>
 #include <sys/errno.h>
 #include <unistd.h>
 
@@ -83,6 +82,7 @@ class Server
 		int	create_server_fd(void) const;
 		void add_client(int fd);
 		void remove_client();
+		void remove_client(nfds_t kill_pfd);
 		void printpfds(); // debug
 
 		void	parse_client_packet(std::string packet);
@@ -101,6 +101,7 @@ class Server
 		void	USER();
 		void	OPER();
 		void	JOIN();
+		void	KILL();
 		void	QUIT();
 		void	SQUIT();
 };
