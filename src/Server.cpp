@@ -128,8 +128,16 @@ void    Server::add_client(int fd)
 	printpfds();
 }
 
+
+void	Server::remove_client_from_all_chans()
+{
+	for (int i = 0; i < nchannels; i++)
+		_Channels[i].remove_user(current_pfd);
+}
+
 void    Server::remove_client()
 {
+	remove_client_from_all_chans();
 	close(pfds[current_pfd].fd);
 	_Clients[current_pfd].fd = -1;
 	pfds[current_pfd].fd = -1;

@@ -26,6 +26,8 @@
 #define RECV_BUF_SIZE 512
 
 #define MAX_ALLOWED_CLIENTS 100
+#define MAX_ALLOWED_CHANNELS_PER_CLIENT 10
+#define MAX_ALLOWED_CHANNELS (MAX_ALLOWED_CLIENTS - 1) * MAX_ALLOWED_CHANNELS_PER_CLIENT //-1 car Clients[0] n'est pas utilisé
 #define OPER_HOST 1
 #define OPER_PASSWD "oper123"
 
@@ -42,7 +44,6 @@ class ClientsMonitoringList
 
 		bool logged;
 		bool registered;
-		bool oper;
 		std::string nickname;
 		std::string username;
 		std::string realname;
@@ -63,7 +64,7 @@ class Server
 		std::string const	_password;
 
 		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS]; //Le premier client est à [1], le [0] est vide c pour le serveur
-		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
+		ChannelsList			_Channels[1000];
 
 		Server();
 
@@ -83,6 +84,7 @@ class Server
 		int	create_server_fd(void) const;
 		void add_client(int fd);
 		void remove_client();
+		void remove_client_from_all_chans();
 		void printpfds(); // debug
 
 		void	parse_client_packet(std::string packet);
@@ -94,6 +96,7 @@ class Server
 		int			check_if_nickname_is_already_used(std::string nickname);
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
 		int			get_channel_id(std::string channel);
+		void		join_channel(int i, int channel_id, std::string join_message);
 
 		// commands
 		void	PASS();

@@ -41,6 +41,8 @@ void	Server::send_message(std::string numeric_reply)
 			message += Client->split_packet[1] + " :No such channel";
 		else if (numeric_reply == ERR_BADCHANNELKEY)
 			message += Client->split_packet[1] + " :Cannot join channel (+k)";
+		else if (numeric_reply == ERR_CHANNELISFULL)
+			message += Client->split_packet[1] + " :Cannot join channel (+l)";
 	}
 
 	message += CRLF;
@@ -179,32 +181,50 @@ void	Server::JOIN()
 				std::string join_message = ":" + get_current_client_prefix() + " JOIN " + split_channels[i];
 				if ((channel_id = get_channel_id(split_channels[i])) != ERROR)
 				{
-					if (_Channels[channel_id].mode.find('k') != std::string::npos)
+					std::string err;
+
+					if (_Channels[channel_id].mode.find('l') != std::string::npos)
+					{
+						if (_Channels[channel_id].is_users_limit_reached())
+							err = ERR_CHANNELISFULL;
+					}
+					else if (_Channels[channel_id].is_invite_only())
+					{
+						if (!_Channels[channel_id].is_user_invited(current_pfd))
+							err = ERR_INVITEONLYCHAN;
+					}
+					else if (_Channels[channel_id].mode.find('k') != std::string::npos)
 					{
 						if (i >= split_passwords.size() || _Channels[channel_id].password != split_passwords[i])
-						{
-							send_message(ERR_BADCHANNELKEY);
-							continue ;
-						}
+							err = ERR_BADCHANNELKEY;
 					}
-					_Channels[channel_id].users.push_back(current_pfd);
-					for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+					if (err == "")
 					{
-						Client = &_Clients[_Channels[channel_id].users[j]];
-						send_message(join_message);
+						send_message(err);
+						continue ;
+					}
+					else
+					{
+						_Channels[channel_id].add_user(current_pfd);
+						for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+						{
+							Client = &_Clients[_Channels[channel_id].users[j]];
+							send_message(join_message);
+						}
 					}
 				}
 				else
 				{
 					_Channels[nchannels].name = split_channels[i];
+					_Channels[nchannels].mode += 'n';
 					if (i < split_passwords.size())
 					{
 						_Channels[nchannels].password = split_passwords[i];
 						_Channels[nchannels].mode += 'k';
 					}
-					_Channels[nchannels].users.push_back(current_pfd);
+					_Channels[nchannels].add_user(current_pfd);
 					send_message(join_message);
-					_Channels[nchannels].operators.push_back(current_pfd);
+					//_Channels[nchannels].operators.push_back(current_pfd);
 					nchannels++;
 				}
 			}

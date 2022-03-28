@@ -5,12 +5,14 @@ CC = clang++
 CPPFLAGS = -g3 -std=c++98
 INC_DIR = inc/
 INC =	Server.hpp \
-		NumericReplies.hpp
+		NumericReplies.hpp \
+		ChannelsList.hpp
 
 SRC_DIR = src/
 SRC =	main.cpp \
 		Server.cpp \
-		Commands.cpp
+		Commands.cpp \
+		ChannelsList.cpp
 
 OBJ_DIR = .obj/
 OBJ = $(SRC:%.cpp=$(OBJ_DIR)%.o)
