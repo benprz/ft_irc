@@ -1,46 +1,40 @@
-NAME =	irc
+#MAKEFLAGS += --silent
 
-SRCSPATH =	src/
-#DEBUGPATH =	debug/
-INCPATH =	inc/
+NAME = ircserv
+CC = clang++
+CPPFLAGS = -g3 -std=c++98
+INC_DIR = inc/
+INC =	Server.hpp \
+		NumericReplies.hpp
 
-#---------	INCLUDES --
-INCLUDES =				$(INCPATH)ClientsMonitoringList.hpp \
-						$(INCPATH)Server.hpp
+SRC_DIR = src/
+SRC =	main.cpp \
+		Server.cpp \
+		Commands.cpp
 
-#--------	SRCS --
-SRCS = 		$(SRCSPATH)main.cpp \
-					$(SRCSPATH)ClientsMonitoringList.cpp \
-					$(SRCSPATH)Server.cpp \
+OBJ_DIR = .obj/
+OBJ = $(SRC:%.cpp=$(OBJ_DIR)%.o)
 
-#--------	COMP --
+.PHONY : all clean fclean re exec
 
-CC =		clang++
+all: $(NAME) exec
 
-CFLAGSPROD	= -Wall -Wextra -Werror -std=c++98
-CFLAGS		= -Wall -Wextra -Werror
-CFLAGSPADD	= -Wpadded
-CFLAGSSAN	=
-ACTIVES_FLAGS = $(CFLAGSSAN) $(CFLAGSPROD)
+$(NAME): $(OBJ)
+	$(CC) $(CFLAGS) -I$(INC_DIR) $(OBJ) -o $(NAME)
 
-OBJS = ${SRCS:.cpp=.o}
+$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp $(addprefix $(INC_DIR),$(INC))
+	mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) -I$(INC_DIR) -c $< -o $@
 
-$(NAME):	$(OBJS) $(INCLUDES)
-					$(CC) $(CFLAGS) $(CFLAGSSAN) $(OBJS) -o $(NAME)
-
-$(OBJS):	$(INCLUDES)
-
-all:		$(NAME)
-
-launch:		$(NAME)
-					./$(NAME)
+exec:
+	./$(NAME) 2000 pw
 
 clean:
-			${RM} $(OBJS)
+	/bin/rm -rf $(OBJ_DIR)
 
-fclean:		clean
-			${RM} $(NAME).a $(NAME)
+fclean: clean
+	/bin/rm -f $(NAME)
 
-re:			fclean all
-
-.PHONY: clear
+re: 
+	$(MAKE) fclean
+	$(MAKE) all
