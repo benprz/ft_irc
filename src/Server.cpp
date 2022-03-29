@@ -149,6 +149,17 @@ void    Server::remove_client()
 	printpfds();
 }
 
+void    Server::remove_client(nfds_t kill_pfd)
+{
+	close(pfds[kill_pfd].fd);
+	_Clients[kill_pfd].fd = -1;
+	pfds[kill_pfd].fd = -1;
+	pfds[kill_pfd].events = 0;
+	pfds[kill_pfd].revents = 0;
+	nfds--;
+	printpfds();
+}
+
 void Server::launch(void)
 {
     int nb_ready_clients, client_fd;

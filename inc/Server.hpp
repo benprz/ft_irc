@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 
 #include <poll.h>
 #include <sys/types.h>
@@ -13,8 +14,6 @@
 #include <fcntl.h>
 
 #include <stdio.h>
-#include <string.h>
-#include <string.h>
 #include <sys/errno.h>
 #include <unistd.h>
 
@@ -84,6 +83,7 @@ class Server
 		void add_client(int fd);
 		void remove_client();
 		void remove_client_from_all_chans();
+		void remove_client(nfds_t kill_pfd);
 		void printpfds(); // debug
 		void printchannels(); //debug
 
@@ -105,6 +105,9 @@ class Server
 		void	OPER();
 		void	JOIN();
 		void	PART();
+		void	KILL();
+		void	QUIT();
+		void	SQUIT();
 };
 
 #endif
