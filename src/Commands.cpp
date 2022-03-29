@@ -45,6 +45,8 @@ void Server::send_message(std::string numeric_reply)
 			message += Client->split_packet[1] + " :Cannot join channel (+l)";
 		else if (numeric_reply == ERR_NOTONCHNANEL)
 			message += Client->split_packet[1] + " :You're not on that channel";
+		else if (numeric_reply == ERR_NOPRIVILEGES)
+			message += ":Permission Denied- You're not an IRC operator";
 	}
 
 	message += CRLF;
