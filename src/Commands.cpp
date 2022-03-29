@@ -43,6 +43,8 @@ void	Server::send_message(std::string numeric_reply)
 			message += Client->split_packet[1] + " :Cannot join channel (+k)";
 		else if (numeric_reply == ERR_CHANNELISFULL)
 			message += Client->split_packet[1] + " :Cannot join channel (+l)";
+		else if (numeric_reply == ERR_NOTONCHNANEL)
+			message += Client->split_packet[1] + " :You're not on that channel";
 	}
 
 	message += CRLF;
@@ -148,21 +150,90 @@ void	Server::OPER()
 	}
 }
 
+void	Server::printchannels()
+{
+	std::cout << std::endl << "|@@@@@@@@@@@@@@@@@@@@@@@@@\n";
+	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
+	{
+		if (_Channels[i].name != "")
+		{
+			std::cout << "name=" << _Channels[i].name << std::endl;
+			std::cout << "password=" << _Channels[i].password << std::endl;
+			std::cout << "mode=" << _Channels[i].mode << std::endl;
+			std::cout << "users=";
+			for (int j = 0; j < _Channels[i].users.size(); j++)
+			{
+				std::cout << _Channels[i].users[j] << ", ";
+			}
+			std::cout << "\n-\n";
+		}
+	}
+	std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@|\n\n";
+}
+
 int	Server::get_channel_id(std::string channel)
 {
-	for (int i = 0; i < nchannels; i++)
+	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
 	{
 		if (_Channels[i].name == channel)
 			return (i);
+		if (_Channels[i].name == "")
+			break ;
 	}
 	return (ERROR);
+}
+
+void	Server::PART()
+{
+	int channel_id;
+
+	if (Client->split_packet.size() < 2)
+		send_message(ERR_NEEDMOREPARAMS);
+	else
+	{
+		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
+		for (int i = 0; i < split_channels.size(); i++)
+		{
+			Client->split_packet[1] = split_channels[i];
+			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
+			{
+				if (_Channels[channel_id].is_user_on_channel(current_pfd))
+				{
+					std::string part_reason;
+					if (Client->split_packet.size() > 2)
+					{
+						part_reason += " :";
+						for (int i = 2; i < Client->split_packet.size(); i++)
+						{
+							part_reason += Client->split_packet[i];
+							if (i < Client->split_packet.size() - 1)
+								part_reason += " ";
+						}
+					}
+					std::string part_message = ":" + get_current_client_prefix() + " PART " + _Channels[channel_id].name + part_reason;
+					for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+					{
+						Client = &_Clients[_Channels[channel_id].users[j]];
+						send_message(part_message);
+					}
+					std::cout << "Removed user=" << current_pfd << " from channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
+					_Channels[channel_id].remove_user(current_pfd);
+					printchannels();
+				}
+				else
+					send_message(ERR_NOTONCHNANEL);
+			}
+			else
+				send_message(ERR_NOSUCHCHANNEL);
+		}
+	}
 }
 
 void	Server::JOIN()
 {
 	if (Client->split_packet.size() < 2)
 		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->opened_channels == MAX_ALLOWED_CHANNELS_PER_CLIENT)
+	else if (Client->opened_channels > MAX_ALLOWED_CHANNELS_PER_CLIENT)
 		send_message(ERR_TOOMANYCHANNELS);
 	else
 	{
@@ -181,6 +252,7 @@ void	Server::JOIN()
 				std::string join_message = ":" + get_current_client_prefix() + " JOIN " + split_channels[i];
 				if ((channel_id = get_channel_id(split_channels[i])) != ERROR)
 				{
+					std::cout << "join channel_id=" << channel_id << std::endl;
 					std::string err;
 
 					if (_Channels[channel_id].mode.find('l') != std::string::npos)
@@ -200,36 +272,43 @@ void	Server::JOIN()
 					}
 					if (err == "")
 					{
-						send_message(err);
-						continue ;
-					}
-					else
-					{
 						_Channels[channel_id].add_user(current_pfd);
 						for (int j = 0; j < _Channels[channel_id].users.size(); j++)
 						{
 							Client = &_Clients[_Channels[channel_id].users[j]];
 							send_message(join_message);
 						}
+						Client->opened_channels++;
+					}
+					else
+					{
+						send_message(err);
+						continue ;
 					}
 				}
 				else
 				{
-					_Channels[nchannels].name = split_channels[i];
-					_Channels[nchannels].mode += 'n';
-					if (i < split_passwords.size())
+					if ((channel_id = get_channel_id("")) >= 0)
 					{
-						_Channels[nchannels].password = split_passwords[i];
-						_Channels[nchannels].mode += 'k';
+						_Channels[channel_id].name = split_channels[i];
+						_Channels[channel_id].mode += 'n';
+						if (i < split_passwords.size())
+						{
+							_Channels[channel_id].password = split_passwords[i];
+							_Channels[channel_id].mode += 'k';
+						}
+						_Channels[channel_id].add_user(current_pfd);
+						send_message(join_message);
+						//_Channels[channel_id].operators.push_back(current_pfd);
+						Client->opened_channels++;
 					}
-					_Channels[nchannels].add_user(current_pfd);
-					send_message(join_message);
-					//_Channels[nchannels].operators.push_back(current_pfd);
-					nchannels++;
+					else
+						send_message(ERR_TOOMANYCHANNELS);
 				}
 			}
 		}
 	}
+	printchannels();
 }
 
 std::vector<std::string> Server::string_split(std::string s, const char delimiter)
@@ -269,6 +348,8 @@ int	Server::parse_command()
 				OPER();
 			else if (command == "JOIN")
 				JOIN();
+			else if (command == "PART")
+				PART();
 			else
 				return (ERROR);
 		}

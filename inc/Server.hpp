@@ -64,7 +64,7 @@ class Server
 		std::string const	_password;
 
 		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS]; //Le premier client est à [1], le [0] est vide c pour le serveur
-		ChannelsList			_Channels[1000];
+		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
 
 		Server();
 
@@ -73,7 +73,6 @@ class Server
 		nfds_t					nfds;
 		nfds_t					current_pfd;
 		ClientsMonitoringList	*Client;
-		int						nchannels;
 
 		Server(int const port, std::string const password);
 		Server(Server const &instance);
@@ -86,6 +85,7 @@ class Server
 		void remove_client();
 		void remove_client_from_all_chans();
 		void printpfds(); // debug
+		void printchannels(); //debug
 
 		void	parse_client_packet(std::string packet);
 		std::vector<std::string> string_split(std::string s, const char delimiter);
@@ -104,6 +104,7 @@ class Server
 		void	USER();
 		void	OPER();
 		void	JOIN();
+		void	PART();
 };
 
 #endif

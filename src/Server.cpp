@@ -8,7 +8,6 @@ Server::Server(int const port, std::string const password) : _port(port), _passw
 {
 	_server_fd = create_server_fd();
 	nfds = 0;
-	nchannels = 0;
 	bzero(_Clients, sizeof(_Clients));
 	bzero(_Channels, sizeof(_Channels));
 }
@@ -131,8 +130,11 @@ void    Server::add_client(int fd)
 
 void	Server::remove_client_from_all_chans()
 {
-	for (int i = 0; i < nchannels; i++)
-		_Channels[i].remove_user(current_pfd);
+	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
+	{
+		if (_Channels[i].name != "")
+			_Channels[i].remove_user(current_pfd);
+	}
 }
 
 void    Server::remove_client()
