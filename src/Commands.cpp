@@ -55,8 +55,7 @@ void Server::send_message(std::string numeric_reply)
 
 void Server::PASS()
 {
-	std::cout << "pass command! from fd " << Client->fd << std::endl;
-	Client->logged = 0; //les prochaines commandes pass overwrite les anciennes
+	Client->logged = 0;
 	if (Client->registered)
 		send_message(ERR_ALREADYREGISTRED);
 	else if (Client->split_packet.size() < 2)
@@ -66,7 +65,6 @@ void Server::PASS()
 	else
 	{
 		Client->logged = 1;
-		std::cout << "fd " << Client->fd << " logged!" << std::endl;
 		if (Client->nickname != "" && Client->username != "")
 			send_message(RPL_WELCOME);
 	}
@@ -95,7 +93,6 @@ int Server::check_if_nickname_is_erroneous(std::string nickname)
 
 void Server::NICK()
 {
-	std::cout << "nick command!" << std::endl;
 	if (Client->split_packet.size() < 2)
 		send_message(ERR_NONICKNAMEGIVEN);
 	else if (check_if_nickname_is_erroneous(Client->split_packet[1]))
@@ -105,7 +102,6 @@ void Server::NICK()
 	else
 	{
 		Client->nickname = Client->split_packet[1];
-		std::cout << "nickname: " << Client->nickname << std::endl;
 		if (Client->logged && Client->username != "" && !Client->registered)
 			send_message(RPL_WELCOME);
 	}
@@ -113,7 +109,6 @@ void Server::NICK()
 
 void Server::USER()
 {
-	std::cout << "user command!" << std::endl;
 	if (Client->registered)
 		send_message(ERR_ALREADYREGISTRED);
 	else if (Client->split_packet.size() < 4)
@@ -129,8 +124,6 @@ void Server::USER()
 		}
 		Client->split_packet[4].erase(0, 1);
 		Client->realname = Client->split_packet[4];
-		std::cout << "username: " << Client->username << std::endl;
-		std::cout << "realname: " << Client->realname << std::endl;
 		if (Client->logged && Client->nickname != "")
 			send_message(RPL_WELCOME);
 	}
@@ -159,23 +152,24 @@ void Server::OPER()
 
 void	Server::printchannels()
 {
-	std::cout << std::endl << "|@@@@@@@@@@@@@@@@@@@@@@@@@\n";
+	std::cout << std::endl << "@@@@@@@@@ Channels list @@@@@@@@@@\n\n";
 	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
 	{
 		if (_Channels[i].name != "")
 		{
-			std::cout << "name=" << _Channels[i].name << std::endl;
-			std::cout << "password=" << _Channels[i].password << std::endl;
-			std::cout << "mode=" << _Channels[i].mode << std::endl;
-			std::cout << "users=";
+			std::cout << "_Channels[" << i << "]" << std::endl;
+			std::cout << "	name=" << _Channels[i].name << std::endl;
+			std::cout << "	password=" << _Channels[i].password << std::endl;
+			std::cout << "	mode=" << _Channels[i].mode << std::endl;
+			std::cout << "	users=";
 			for (int j = 0; j < _Channels[i].users.size(); j++)
 			{
-				std::cout << _Channels[i].users[j] << ", ";
+				std::cout << _Channels[i].users[j] << " ";
 			}
-			std::cout << "\n-\n";
+			std::cout << "\n\n";
 		}
 	}
-	std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@|\n\n";
+	std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n\n";
 }
 
 int	Server::get_channel_id(std::string channel)
@@ -428,7 +422,11 @@ void Server::parse_client_packet(std::string packet)
 	{
 		current_command = Client->packet.substr(0, newline_pos);
 		current_command.erase(std::remove(current_command.begin(), current_command.end(), '\r'));
-		std::cout << "packet=\"" << Client->packet << "\"\n";
+
+		std::cout << std::endl;
+		std::cout << "# NEW PACKET FROM (current_pfd=" << current_pfd << ", fd=" << Client->fd << ", nick=" << Client->nickname << ")"<< std::endl;
+		std::cout << Client->packet << std::endl;
+
 		Client->packet.erase(0, newline_pos + 1);
 		Client->split_packet = string_split(current_command, ' ');
 		if (parse_command())
