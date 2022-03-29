@@ -400,6 +400,12 @@ int Server::parse_command()
 				JOIN();
 			else if (command == "PART")
 				PART();
+			else if (command == "KILL")
+				KILL();
+			else if (command == "QUIT")
+				QUIT();
+			else if (command == "SQUIT")
+				SQUIT();
 			else
 				return (ERROR);
 		}
