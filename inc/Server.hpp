@@ -30,6 +30,7 @@
 #define OPER_HOST 1
 #define OPER_PASSWD "oper123"
 
+#define NICK_CHARSET "AZERTYUIOPQSDFGHJKLMWXCVBNazertyuiopqsdfghjklmwxcvbn1234567890[]\\`_^{}|"
 #define CRLF "\r\n"
 
 #include "ChannelsList.hpp"
@@ -92,11 +93,11 @@ class Server
 		int	parse_command();
 		void		send_message(std::string error);
 
-		int			check_if_nickname_is_erroneous(std::string split_packet);
-		int			check_if_nickname_is_already_used(std::string nickname);
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
 		int			get_channel_id(std::string channel);
-		void		join_channel(int i, int channel_id, std::string join_message);
+		int			get_client_id(std::string nick);
+		void		add_client_to_chan(int channel_id);
+		void		remove_client_from_chan(int channel_id, std::string reason);
 
 		// commands
 		void	PASS();
@@ -108,6 +109,7 @@ class Server
 		void	KILL();
 		void	QUIT();
 		void	SQUIT();
+		void	MODE();
 };
 
 #endif

@@ -133,7 +133,7 @@ void	Server::remove_client_from_all_chans()
 	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
 	{
 		if (_Channels[i].name != "")
-			_Channels[i].remove_user(current_pfd);
+			remove_client_from_chan(i, "");
 	}
 }
 
