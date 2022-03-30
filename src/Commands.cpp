@@ -222,6 +222,7 @@ int	Server::get_channel_id(std::string channel)
 {
 	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
 	{
+		std::cout << "#ehduehud " << _Channels[i].name << std::endl;
 		if (_Channels[i].name == channel)
 			return (i);
 		if (_Channels[i].name == "")
@@ -272,6 +273,7 @@ void	Server::PART()
 		for (int i = 0; i < split_channels.size(); i++)
 		{
 			Client->split_packet[1] = split_channels[i];
+			std::cout << "ehduehud " << split_channels[i] << std::endl;
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
 				if (_Channels[channel_id].is_user_on_channel(current_pfd))
