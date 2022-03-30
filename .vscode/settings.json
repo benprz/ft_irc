@@ -26,5 +26,9 @@
     "**/.*/**",
     "**/.vscode",
     "**/.vscode/**"
-  ]
+],
+"files.associations": {
+	"string": "cpp",
+	"vector": "cpp"
+}
 }

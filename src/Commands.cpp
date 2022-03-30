@@ -48,7 +48,7 @@ void Server::send_message(std::string numeric_reply)
 		else if (numeric_reply == ERR_NOPRIVILEGES)
 			message += ":Permission Denied- You're not an IRC operator";
 		else if (numeric_reply == ERR_CHANOPRIVSNEEDED)
-			message += Client->split_packet[1] + " ::You're not channel operator";
+			message += Client->split_packet[1] + " :You're not channel operator";
 		else if (numeric_reply == ERR_KEYSET)
 			message += Client->split_packet[1] + " :Channel key already set";
 		else if (numeric_reply == ERR_UNKNOWNMODE)
@@ -155,14 +155,19 @@ void	Server::MODE()
 			{
 				if (Client->split_packet[2][0] == '+' || Client->split_packet[2][0] == '-')
 				{
+					std::string	err;
 					char action = Client->split_packet[2][0];
 					std::string third_param = Client->split_packet.size() > 3 ? Client->split_packet[3] : "";
 					for (int i = 1; i < Client->split_packet[2].size(); i++)
 					{
 						Client->split_packet[2][0] = Client->split_packet[2][i];
-						//if (action == '+')
-							//_Channels[channel_id].add_or_remove_mode(action, Client->split_packet[2][i], third_param, *this);
+						if ((err = _Channels[channel_id].add_or_remove_mode(action, Client->split_packet[2][i], third_param, *this)) != "")
+						{
+							send_message(err);
+							break ;
+						}
 					}
+					printchannels();
 				}
 			}
 			else
@@ -195,7 +200,9 @@ void	Server::printchannels()
 			{
 				std::cout << _Channels[i].operators[j] << " ";
 			}
-			std::cout << "\n\n";
+			std::cout << "\n";
+			std::cout << "	users_limit=" << _Channels[i].users_limit << std::endl;
+			std::cout << "\n";
 		}
 	}
 	std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n\n";
@@ -279,8 +286,8 @@ void	Server::PART()
 							if (i < Client->split_packet.size() - 1)
 								part_reason += " ";
 						}
-						remove_client_from_chan(channel_id, part_reason);
 					}
+					remove_client_from_chan(channel_id, part_reason);
 				}
 				else
 					send_message(ERR_NOTONCHANNEL);
@@ -360,7 +367,6 @@ void	Server::JOIN()
 			}
 		}
 	}
-	printchannels();
 }
 
 std::vector<std::string> Server::string_split(std::string s, const char delimiter)
@@ -453,6 +459,8 @@ int Server::parse_command()
 				QUIT();
 			else if (command == "SQUIT")
 				SQUIT();
+			else if (command == "MODE")
+				MODE();
 			else
 				return (ERROR);
 		}

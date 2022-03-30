@@ -166,52 +166,55 @@ void Server::launch(void)
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
-    //on ajoute server_fd au tableau pollfd requis pour poll
-	add_client(_server_fd);
-	while (1)
+	if (_server_fd != ERROR)
 	{
-		if ((nb_ready_clients = poll(pfds, nfds, -1)) == -1)
+		//on ajoute server_fd au tableau pollfd requis pour poll
+		add_client(_server_fd);
+		while (1)
 		{
-			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
-			break ;
-		}
-		for (current_pfd = 0; current_pfd < nfds; current_pfd++)
-		{
-			if (pfds[current_pfd].revents & POLLIN)
+			if ((nb_ready_clients = poll(pfds, nfds, -1)) == -1)
 			{
-				// 0 étant l'index dans le tableau pfds pour server_fd
-				if (current_pfd == 0)
+				std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
+				break ;
+			}
+			for (current_pfd = 0; current_pfd < nfds; current_pfd++)
+			{
+				if (pfds[current_pfd].revents & POLLIN)
 				{
-                    // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
-					if ((client_fd = accept(_server_fd, NULL, 0)) == -1)
+					// 0 étant l'index dans le tableau pfds pour server_fd
+					if (current_pfd == 0)
 					{
-						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
-						break ;
+						// fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
+						if ((client_fd = accept(_server_fd, NULL, 0)) == -1)
+						{
+							std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
+							break ;
+						}
+						add_client(client_fd);
 					}
-					add_client(client_fd);
-				}
-				else
-				{
-					recv_length = recv(pfds[current_pfd].fd, recv_buf, RECV_BUF_SIZE, 0); 
-					//si y'a une erreur
-					if (recv_length < 0)
+					else
 					{
-						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[current_pfd].events << " revents=" << pfds[current_pfd].revents << std::endl;
-						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						remove_client();
-						continue ;
-					}
-					//la connexion s'est coupée, EOF, on supprime donc le fd
-					else if (recv_length == 0)
-					{
-						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						remove_client();
-					}
-					//on a reçu un paquet! on l'ouvre :-)
-					else 
-					{
-						recv_buf[recv_length] = 0;
-						parse_client_packet(recv_buf);
+						recv_length = recv(pfds[current_pfd].fd, recv_buf, RECV_BUF_SIZE, 0); 
+						//si y'a une erreur
+						if (recv_length < 0)
+						{
+							std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[current_pfd].events << " revents=" << pfds[current_pfd].revents << std::endl;
+							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+							remove_client();
+							continue ;
+						}
+						//la connexion s'est coupée, EOF, on supprime donc le fd
+						else if (recv_length == 0)
+						{
+							std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
+							remove_client();
+						}
+						//on a reçu un paquet! on l'ouvre :-)
+						else 
+						{
+							recv_buf[recv_length] = 0;
+							parse_client_packet(recv_buf);
+						}
 					}
 				}
 			}

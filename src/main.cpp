@@ -11,5 +11,5 @@ int main(int argc, char **argv)
 	}
 	else
 		std::cout << "Usage : ./ircserv <port> <password>" << std::endl;
-	return (ERROR);
+	return (errno);
 }
