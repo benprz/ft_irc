@@ -30,36 +30,12 @@
 #define OPER_HOST 1
 #define OPER_PASSWD "oper123"
 
+#define USER_MODES "io" // "iswo" mais s et w ne sont pas utilisés
 #define NICK_CHARSET "AZERTYUIOPQSDFGHJKLMWXCVBNazertyuiopqsdfghjklmwxcvbn1234567890[]\\`_^{}|"
 #define CRLF "\r\n"
 
+#include "ClientsMonitoringList.hpp"
 #include "ChannelsList.hpp"
-
-class ClientsMonitoringList
-{
-	public:
-		int fd;
-		std::string packet;
-		std::vector<std::string> split_packet;
-
-		bool logged;
-		bool registered;
-		std::string nickname;
-		std::string username;
-		std::string realname;
-		std::string hostname;
-		std::string	mode;
-
-		int opened_channels;
-
-		ClientsMonitoringList(int fd) 
-		{
-			this->fd = fd; 
-			logged = 0;
-			registered = 0;
-			opened_channels = 0;
-		};
-};
 
 class Server
 {
@@ -88,9 +64,10 @@ class Server
 		void launch(void);
 		int	create_server_fd(void) const;
 		void add_client(int fd);
+		void remove_client(int fd);
 		void remove_client();
+		void remove_client_from_all_chans(int client_fd);
 		void remove_client_from_all_chans();
-		void remove_client(nfds_t kill_pfd);
 		void printpfds(); // debug
 		void printchannels(); //debug
 
@@ -102,8 +79,10 @@ class Server
 		void send_message_to_channel(int channel_id, std::string message);
 
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
+		int			get_pfd_id(int fd);
 		int			get_channel_id(std::string channel);
 		int			get_client_id(std::string nick);
+		int			get_client_id(int fd);
 		int			get_client_fd(std::string nick);
 		void		add_client_to_chan(int channel_id);
 		void		remove_client_from_chan(int channel_id, std::string reason);
@@ -117,8 +96,9 @@ class Server
 		void	PART();
 		void	KILL();
 		void	QUIT();
-		void	SQUIT();
 		void	MODE();
+		void	INVITE();
+		void	NAMES();
 };
 
 #endif

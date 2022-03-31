@@ -6,12 +6,14 @@ CPPFLAGS = -g3 -std=c++98
 INC_DIR = inc/
 INC =	Server.hpp \
 		NumericReplies.hpp \
+		ClientsMonitoringList.hpp \
 		ChannelsList.hpp
 
 SRC_DIR = src/
 SRC =	main.cpp \
 		Server.cpp \
 		Commands.cpp \
+		ClientsMonitoringList.cpp \
 		ChannelsList.cpp
 
 OBJ_DIR = .obj/

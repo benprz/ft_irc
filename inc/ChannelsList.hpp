@@ -19,6 +19,7 @@ class ChannelsList
 		std::vector<int> users;
 		std::vector<int> invited_users;
 		std::vector<int> operators;
+		std::string topic;
 		int users_limit;
 
 		ChannelsList(std::string name);
@@ -30,6 +31,7 @@ class ChannelsList
 		int		is_user_operator(int client_fd);
 		int 	is_user_invited(int client_fd);
 		int		is_users_limit_reached();
+		void	add_user_to_invite_list(int client_fd);
 		void	remove_user_from_invite_list(int client_fd);
 		void	set_key(std::string key);
 		std::string	add_or_remove_mode(char action, char mode, std::string third_param, Server &serv);
