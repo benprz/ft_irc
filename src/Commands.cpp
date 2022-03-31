@@ -516,16 +516,10 @@ void Server::KICK(void)
 		send_message(ERR_BADCHANMASK);
 		return;
 	}
-	int client_id = get_clien
-	int i = 1;
-	while (_Clients[i].nickname != param[1] && i <= MAX_ALLOWED_CLIENTS)
-		i++;
-	if (i <= MAX_ALLOWED_CLIENTS)
-	{
-		for (int j = 0; j < _Channels[channel_id].users.size(); j++)
-			if (_Channels[channel_id].users == i)
-	
-	}
+	int client_id = get_client_id(param[1]);
+	int client_fd = _Clients[client_id].fd;
+	if (_Channels[channel_id].is_user_on_channel(client_fd))
+		_Channels[channel_id].remove_user(client_fd);
 }
 
 void Server::QUIT(void)
