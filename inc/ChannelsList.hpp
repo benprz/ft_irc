@@ -14,23 +14,24 @@ class ChannelsList
 {
     public:
         std::string name;
-		std::string password;
+		std::string key;
         std::string mode;
 		std::vector<int> users;
 		std::vector<int> invited_users;
 		std::vector<int> operators;
 		int users_limit;
 
-		void	clear();
-		void	add_user(int client_index);
-		void	remove_user(int client_index);
-		void	add_operator(int client_index);
-		void	remove_operator(int client_index);
-		int 	is_user_invited(int client_index);
-		int		is_user_on_channel(int client_index);
-		int		is_user_operator(int client_index);
+		ChannelsList(std::string name);
+		void	add_user(int client_fd);
+		void	remove_user(int client_fd);
+		void	add_operator(int client_fd);
+		void	remove_operator(int client_fd);
+		int		is_user_on_channel(int client_fd);
+		int		is_user_operator(int client_fd);
+		int 	is_user_invited(int client_fd);
 		int		is_users_limit_reached();
-		void	remove_user_from_invite_list(int client_index);
+		void	remove_user_from_invite_list(int client_fd);
+		void	set_key(std::string key);
 		std::string	add_or_remove_mode(char action, char mode, std::string third_param, Server &serv);
 		int		has_mode(char mode);
 

@@ -27,7 +27,6 @@
 
 #define MAX_ALLOWED_CLIENTS 100
 #define MAX_ALLOWED_CHANNELS_PER_CLIENT 10
-#define MAX_ALLOWED_CHANNELS (MAX_ALLOWED_CLIENTS - 1) * MAX_ALLOWED_CHANNELS_PER_CLIENT //-1 car Clients[0] n'est pas utilisé
 #define OPER_HOST 1
 #define OPER_PASSWD "oper123"
 
@@ -53,7 +52,13 @@ class ClientsMonitoringList
 
 		int opened_channels;
 
-		//~ClientsMonitoringList() {};
+		ClientsMonitoringList(int fd) 
+		{
+			this->fd = fd; 
+			logged = 0;
+			registered = 0;
+			opened_channels = 0;
+		};
 };
 
 class Server
@@ -64,8 +69,8 @@ class Server
 		int const			_port;
 		std::string const	_password;
 
-		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS]; //Le premier client est à [1], le [0] est vide c pour le serveur
-		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
+		std::vector<ClientsMonitoringList> 	_Clients;
+		std::vector<ChannelsList>			_Channels;
 
 		Server();
 
@@ -92,7 +97,9 @@ class Server
 		void	parse_client_packet(std::string packet);
 		std::vector<std::string> string_split(std::string s, const char delimiter);
 		int	parse_command();
-		void		send_message(std::string error);
+		void send_message(std::string error);
+		void send_message(int fd, std::string numeric_reply);
+		void send_message_to_channel(int channel_id, std::string message);
 
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
 		int			get_channel_id(std::string channel);

@@ -8,8 +8,6 @@ Server::Server(int const port, std::string const password) : _port(port), _passw
 {
 	_server_fd = create_server_fd();
 	nfds = 0;
-	bzero(_Clients, sizeof(_Clients));
-	bzero(_Channels, sizeof(_Channels));
 }
 
 Server::~Server()
@@ -21,7 +19,7 @@ void	Server::printpfds() // debug
 {
 	nfds_t npfds2 = nfds;
 
-	std::cout << "\n#-------- pfds list ---------#\n";
+	std::cout << "\n#-------- pfds list ---------#\n\n";
 	std::cout << "pfds[" << 0 << "]" << std::endl;
 	std::cout << "	fd=" << pfds[0].fd << std::endl;
 	std::cout << "	events=" << pfds[0].events << std::endl;
@@ -38,7 +36,32 @@ void	Server::printpfds() // debug
 		std::cout << "	events=" << pfds[i].events << std::endl;
 		std::cout << "	revents=" << pfds[i].revents << std::endl;
 	}
-	std::cout << "#----------------------------#\n\n";
+	if (_Clients.size())
+	{
+		std::cout << std::endl << "#-------- clients list -------#\n\n";
+		std::cout << "Clients[" << 0 << "]" << std::endl;
+		std::cout << "	fd=" << _Clients[0].fd << std::endl;
+		std::cout << "	logged=" << _Clients[0].logged << std::endl;
+		std::cout << "	registered=" << _Clients[0].registered << std::endl;
+		std::cout << "	nickname=" << _Clients[0].nickname << std::endl;
+		std::cout << "	username=" << _Clients[0].username << std::endl;
+		std::cout << "	realname=" << _Clients[0].realname << std::endl;
+		std::cout << "	mode=" << _Clients[0].mode << std::endl;
+		std::cout << "	opened_channels=" << _Clients[0].opened_channels << std::endl;
+		for (int i = 1; i < _Clients.size(); i++)
+		{
+			std::cout << std::endl << "Clients[" << i << "]" << std::endl;
+			std::cout << "	fd=" << _Clients[i].fd << std::endl;
+			std::cout << "	logged=" << _Clients[i].logged << std::endl;
+			std::cout << "	registered=" << _Clients[i].registered << std::endl;
+			std::cout << "	nickname=" << _Clients[i].nickname << std::endl;
+			std::cout << "	username=" << _Clients[i].username << std::endl;
+			std::cout << "	realname=" << _Clients[i].realname << std::endl;
+			std::cout << "	mode=" << _Clients[i].mode << std::endl;
+			std::cout << "	opened_channels=" << _Clients[i].opened_channels << std::endl;
+		}
+	}
+	std::cout << "\n#-----------------------------#\n\n";
 }
 
 int Server::create_server_fd(void) const
@@ -117,22 +140,18 @@ void    Server::add_client(int fd)
 	}
 	std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nbpfds=" << nfds + 1 << std::endl;
 	if (i > 0)
-	{
-		bzero(&_Clients[i], sizeof(ClientsMonitoringList));
-		_Clients[i].fd = fd;
-	}
+		_Clients.push_back(fd);
     pfds[i].fd = fd;
     pfds[i].events = POLLIN;
     nfds++;
 	printpfds();
 }
 
-
 void	Server::remove_client_from_all_chans()
 {
-	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
+	for (int i = 0; i < _Channels.size(); i++)
 	{
-		if (_Channels[i].name != "")
+		if (_Channels[i].is_user_on_channel(Client->fd))
 			remove_client_from_chan(i, "");
 	}
 }
@@ -140,8 +159,8 @@ void	Server::remove_client_from_all_chans()
 void    Server::remove_client()
 {
 	remove_client_from_all_chans();
+	_Clients.erase(_Clients.begin() + (current_pfd - 1));
 	close(pfds[current_pfd].fd);
-	_Clients[current_pfd].fd = -1;
 	pfds[current_pfd].fd = -1;
 	pfds[current_pfd].events = 0;
 	pfds[current_pfd].revents = 0;
@@ -149,16 +168,19 @@ void    Server::remove_client()
 	printpfds();
 }
 
+/*
 void    Server::remove_client(nfds_t kill_pfd)
 {
+	remove_client_from_all_chans();
 	close(pfds[kill_pfd].fd);
-	_Clients[kill_pfd].fd = -1;
+	_Clients.erase(_Clients.begin() + (current_pfd - 1));
 	pfds[kill_pfd].fd = -1;
 	pfds[kill_pfd].events = 0;
 	pfds[kill_pfd].revents = 0;
 	nfds--;
 	printpfds();
 }
+*/
 
 void Server::launch(void)
 {
@@ -179,6 +201,11 @@ void Server::launch(void)
 			}
 			for (current_pfd = 0; current_pfd < nfds; current_pfd++)
 			{
+				/*
+				std::cout << "nb_ready_clients=" << nb_ready_clients << std::endl;
+				if (nb_ready_clients-- == 0)
+					break ;
+					*/
 				if (pfds[current_pfd].revents & POLLIN)
 				{
 					// 0 étant l'index dans le tableau pfds pour server_fd

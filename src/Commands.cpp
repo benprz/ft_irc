@@ -1,7 +1,7 @@
 #include "Server.hpp"
 #include "NumericReplies.hpp"
 
-void Server::send_message(std::string numeric_reply)
+void Server::send_message(int fd, std::string numeric_reply)
 {
 	std::string message;
 
@@ -56,7 +56,12 @@ void Server::send_message(std::string numeric_reply)
 	}
 
 	message += CRLF;
-	send(Client->fd, message.c_str(), message.size(), 0);
+	send(fd, message.c_str(), message.size(), 0);
+}
+
+void Server::send_message(std::string numeric_reply)
+{
+	send_message(Client->fd, numeric_reply);
 }
 
 void Server::PASS()
@@ -151,7 +156,7 @@ void	Server::MODE()
 		int channel_id = get_channel_id(Client->split_packet[1]);
 		if (channel_id >= 0)
 		{
-			if (_Channels[channel_id].is_user_operator(current_pfd))
+			if (_Channels[channel_id].is_user_operator(Client->fd))
 			{
 				if (Client->split_packet[2][0] == '+' || Client->split_packet[2][0] == '-')
 				{
@@ -181,13 +186,13 @@ void	Server::MODE()
 void	Server::printchannels()
 {
 	std::cout << std::endl << "@@@@@@@@@ Channels list @@@@@@@@@@\n\n";
-	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
+	for (int i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].name != "")
 		{
 			std::cout << "_Channels[" << i << "]" << std::endl;
 			std::cout << "	name=" << _Channels[i].name << std::endl;
-			std::cout << "	password=" << _Channels[i].password << std::endl;
+			std::cout << "	key=" << _Channels[i].key << std::endl;
 			std::cout << "	mode=" << _Channels[i].mode << std::endl;
 			std::cout << "	users=";
 			for (int j = 0; j < _Channels[i].users.size(); j++)
@@ -210,7 +215,7 @@ void	Server::printchannels()
 
 int	Server::get_client_id(std::string nick)
 {
-	for (int i = 0; i < MAX_ALLOWED_CLIENTS; i++)
+	for (int i = 0; i < _Clients.size(); i++)
 	{
 		if (_Clients[i].nickname == nick)
 			return (i);
@@ -220,45 +225,38 @@ int	Server::get_client_id(std::string nick)
 
 int	Server::get_channel_id(std::string channel)
 {
-	for (int i = 0; i < MAX_ALLOWED_CHANNELS; i++)
+	for (int i = 0; i < _Channels.size(); i++)
 	{
-		std::cout << "#ehduehud " << _Channels[i].name << std::endl;
 		if (_Channels[i].name == channel)
 			return (i);
-		if (_Channels[i].name == "")
-			break ;
 	}
 	return (ERROR);
 }
 
+void	Server::send_message_to_channel(int channel_id, std::string message)
+{
+	for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+		send_message(_Channels[channel_id].users[j], message);
+}
+
 void	Server::add_client_to_chan(int channel_id)
 {
-	std::string join_message = ":" + get_current_client_prefix() + " JOIN " + _Channels[channel_id].name;
-
-	_Channels[channel_id].add_user(current_pfd);
-	for (int j = 0; j < _Channels[channel_id].users.size(); j++)
-	{
-		Client = &_Clients[_Channels[channel_id].users[j]];
-		send_message(join_message);
-	}
-	std::cout << "Added user=" << current_pfd << " to channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
-	printchannels();
+	_Channels[channel_id].add_user(Client->fd);
 	Client->opened_channels++;
+	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN " + _Channels[channel_id].name);
+	std::cout << "Added user fd=" << Client->fd << " to channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
+	printchannels();
 }
 
 void	Server::remove_client_from_chan(int channel_id, std::string reason)
 {
-	std::string part_message = ":" + get_current_client_prefix() + " PART " + _Channels[channel_id].name + reason;
-
-	for (int j = 0; j < _Channels[channel_id].users.size(); j++)
-	{
-		Client = &_Clients[_Channels[channel_id].users[j]];
-		send_message(part_message);
-	}
-	_Channels[channel_id].remove_user(current_pfd);
-	std::cout << "Removed user=" << current_pfd << " from channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
-	printchannels();
+	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " PART " + _Channels[channel_id].name + reason);
+	_Channels[channel_id].remove_user(Client->fd);
 	Client->opened_channels--;
+	if (_Channels[channel_id].users.size() == 0)
+		_Channels.erase(_Channels.begin() + channel_id);
+	std::cout << "Removed user fd=" << Client->fd << " from channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
+	printchannels();
 }
 
 void	Server::PART()
@@ -273,10 +271,9 @@ void	Server::PART()
 		for (int i = 0; i < split_channels.size(); i++)
 		{
 			Client->split_packet[1] = split_channels[i];
-			std::cout << "ehduehud " << split_channels[i] << std::endl;
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
-				if (_Channels[channel_id].is_user_on_channel(current_pfd))
+				if (_Channels[channel_id].is_user_on_channel(Client->fd))
 				{
 					std::string part_reason;
 					if (Client->split_packet.size() > 2)
@@ -311,10 +308,10 @@ void	Server::JOIN()
 	else
 	{
 		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
-		std::vector<std::string> split_passwords;
+		std::vector<std::string> split_keys;
 		int channel_id;
 		if (Client->split_packet.size() == 3)
-			split_passwords = string_split(Client->split_packet[2], ',');
+			split_keys = string_split(Client->split_packet[2], ',');
 		for (int i = 0; i < split_channels.size(); i++)
 		{
 			Client->split_packet[1] = split_channels[i];
@@ -326,19 +323,19 @@ void	Server::JOIN()
 				{
 					std::string err;
 
-					if (_Channels[channel_id].mode.find('l') != std::string::npos)
+					if (_Channels[channel_id].is_limited())
 					{
 						if (_Channels[channel_id].is_users_limit_reached())
 							err = ERR_CHANNELISFULL;
 					}
 					else if (_Channels[channel_id].is_invite_only())
 					{
-						if (!_Channels[channel_id].is_user_invited(current_pfd))
+						if (!_Channels[channel_id].is_user_invited(Client->fd))
 							err = ERR_INVITEONLYCHAN;
 					}
-					else if (_Channels[channel_id].mode.find('k') != std::string::npos)
+					else if (_Channels[channel_id].is_restricted_by_key())
 					{
-						if (i >= split_passwords.size() || _Channels[channel_id].password != split_passwords[i])
+						if (i >= split_keys.size() || _Channels[channel_id].key != split_keys[i])
 							err = ERR_BADCHANNELKEY;
 					}
 					if (err != "")
@@ -351,20 +348,12 @@ void	Server::JOIN()
 				}
 				else
 				{
-					if ((channel_id = get_channel_id("")) >= 0)
-					{
-						_Channels[channel_id].name = split_channels[i];
-						_Channels[channel_id].mode += 'n';
-						if (i < split_passwords.size())
-						{
-							_Channels[channel_id].password = split_passwords[i];
-							_Channels[channel_id].mode += 'k';
-						}
-						add_client_to_chan(channel_id);
-						_Channels[channel_id].operators.push_back(current_pfd);
-					}
-					else
-						send_message(ERR_TOOMANYCHANNELS);
+					_Channels.push_back(split_channels[i]);
+					channel_id = _Channels.size() - 1;
+					if (i < split_keys.size())
+						_Channels[channel_id].set_key(split_keys[i]);
+					add_client_to_chan(channel_id);
+					_Channels[channel_id].add_operator(Client->fd);
 				}
 			}
 		}
@@ -391,6 +380,7 @@ std::vector<std::string> Server::string_split(std::string s, const char delimite
 	return output;
 }
 
+/*
 void Server::KILL(void)
 {
 	std::size_t found = Client->mode.rfind("o");
@@ -412,6 +402,7 @@ void Server::KILL(void)
 	else
 		send_message(ERR_NOPRIVILEGES);
 }
+*/
 
 void Server::QUIT(void)
 {
@@ -455,8 +446,6 @@ int Server::parse_command()
 				JOIN();
 			else if (command == "PART")
 				PART();
-			else if (command == "KILL")
-				KILL();
 			else if (command == "QUIT")
 				QUIT();
 			else if (command == "SQUIT")
@@ -477,7 +466,7 @@ void Server::parse_client_packet(std::string packet)
 	std::string current_command;
 	int newline_pos;
 
-	Client = &_Clients[current_pfd];
+	Client = &_Clients[current_pfd - 1];
 	Client->packet += packet;
 	while ((newline_pos = Client->packet.find("\n")) != std::string::npos)
 	{

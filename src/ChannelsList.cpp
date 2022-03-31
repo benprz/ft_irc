@@ -1,51 +1,44 @@
 #include "ChannelsList.hpp"
 
-void	ChannelsList::clear()
+ChannelsList::ChannelsList(std::string name)
 {
-	name.clear();
-	password.clear();
-	mode.clear();
-	users.clear();
-	invited_users.clear();
-	operators.clear();
+	this->name = name;
+	mode += 'n';
 	users_limit = 0;
 }
 
-void	ChannelsList::add_user(int client_index)
+void	ChannelsList::add_user(int client_fd)
 {
 	for (int i = 0; i < users.size(); i++)
 	{
-		if (users[i] == client_index)
+		if (users[i] == client_fd)
 			return ;
 	}
 	if (is_invite_only())
-		remove_user_from_invite_list(client_index);
-	users.push_back(client_index);
+		remove_user_from_invite_list(client_fd);
+	users.push_back(client_fd);
 }
 
-void	ChannelsList::remove_user(int client_index)
+void	ChannelsList::remove_user(int client_fd)
 {
 	for (int i = 0; i < users.size(); i++)
 	{
-		if (users[i] == client_index)
-		{
+		if (users[i] == client_fd)
 			users.erase(users.begin() + i);
-			if (users.size() == 0)
-				clear();
-		}
 	}
 }
 
-void	ChannelsList::add_operator(int client_index)
+void	ChannelsList::add_operator(int client_fd)
 {
-	operators.push_back(client_index);
+	if (!is_user_operator(client_fd))
+		operators.push_back(client_fd);
 }
 
-void	ChannelsList::remove_operator(int client_index)
+void	ChannelsList::remove_operator(int client_fd)
 {
 	for (int i = 0; i < operators.size(); i++)
 	{
-		if (operators[i] == client_index)
+		if (operators[i] == client_fd)
 			operators.erase(operators.begin() + i);
 	}
 }
@@ -57,31 +50,31 @@ int		ChannelsList::has_mode(char mode)
 	return (0);
 }
 
-int ChannelsList::is_user_invited(int client_index)
+int ChannelsList::is_user_invited(int client_fd)
 {
 	for (int i = 0; i < invited_users.size(); i++)
 	{
-		if (invited_users[i] == client_index)
+		if (invited_users[i] == client_fd)
 			return (1);
 	}
 	return (0);
 }
 
-int	ChannelsList::is_user_on_channel(int client_index)
+int	ChannelsList::is_user_on_channel(int client_fd)
 {
 	for (int i = 0; i < users.size(); i++)
 	{
-		if (users[i] == client_index)
+		if (users[i] == client_fd)
 			return (1);
 	}
 	return (0);
 }
 
-int	ChannelsList::is_user_operator(int client_index)
+int	ChannelsList::is_user_operator(int client_fd)
 {
 	for (int i = 0; i < operators.size(); i++)
 	{
-		if (operators[i] == client_index)
+		if (operators[i] == client_fd)
 			return (1);
 	}
 	return (0);
@@ -94,16 +87,22 @@ int	ChannelsList::is_users_limit_reached()
 	return (0);
 }
 
-void	ChannelsList::remove_user_from_invite_list(int client_index)
+void	ChannelsList::remove_user_from_invite_list(int client_fd)
 {
 	for (int i = 0; i < invited_users.size(); i++)
 	{
-		if (invited_users[i] == client_index)
+		if (invited_users[i] == client_fd)
 		{
 			invited_users[i] = -1;
 			break ;
 		}
 	}
+}
+
+void ChannelsList::set_key(std::string key)
+{
+	this->key = key;
+	mode += 'k';
 }
 
 std::string	ChannelsList::add_or_remove_mode(char action, char mode, std::string third_param, Server &serv)
@@ -115,20 +114,16 @@ std::string	ChannelsList::add_or_remove_mode(char action, char mode, std::string
 	else
 	{
 		int mode_pos = this->mode.find(mode);
-		int client_index = serv.get_client_id(third_param);
+		int client_fd = serv.get_client_id(third_param);
 
 		if (mode == 'o')
 		{
-				std::cout << "client_index=" << client_index << std::endl;
-			if (client_index >= 0)
+			if (client_fd >= 0)
 			{
 				if (action == '+')
-				{
-					if (!is_user_operator(client_index))
-						add_operator(client_index);
-				}
-				else if (is_user_operator(client_index))
-					remove_operator(client_index);
+					add_operator(client_fd);
+				else if (is_user_operator(client_fd))
+					remove_operator(client_fd);
 			}
 		}
 		else if (mode == 'l')
@@ -158,10 +153,7 @@ std::string	ChannelsList::add_or_remove_mode(char action, char mode, std::string
 				else if (third_param == "")
 					return (ERR_NEEDMOREPARAMS);
 				else
-				{
-					this->mode += 'k';
-					password = third_param;
-				}
+					set_key(third_param);
 			}
 			else if (is_restricted_by_key())
 				this->mode[mode_pos] = ' ';
