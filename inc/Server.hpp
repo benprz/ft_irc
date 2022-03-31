@@ -104,6 +104,7 @@ class Server
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
 		int			get_channel_id(std::string channel);
 		int			get_client_id(std::string nick);
+		int			get_client_fd(std::string nick);
 		void		add_client_to_chan(int channel_id);
 		void		remove_client_from_chan(int channel_id, std::string reason);
 

@@ -9,14 +9,12 @@ ChannelsList::ChannelsList(std::string name)
 
 void	ChannelsList::add_user(int client_fd)
 {
-	for (int i = 0; i < users.size(); i++)
+	if (!is_user_on_channel(client_fd))	
 	{
-		if (users[i] == client_fd)
-			return ;
+		if (is_invite_only())
+			remove_user_from_invite_list(client_fd);
+		users.push_back(client_fd);
 	}
-	if (is_invite_only())
-		remove_user_from_invite_list(client_fd);
-	users.push_back(client_fd);
 }
 
 void	ChannelsList::remove_user(int client_fd)
@@ -89,14 +87,14 @@ int	ChannelsList::is_users_limit_reached()
 
 void	ChannelsList::remove_user_from_invite_list(int client_fd)
 {
-	for (int i = 0; i < invited_users.size(); i++)
-	{
-		if (invited_users[i] == client_fd)
-		{
-			invited_users[i] = -1;
+	 for (int i = 0; i < invited_users.size(); i++)
+	 {
+		 if (invited_users[i] == client_fd)
+		 {
+			invited_users.erase(invited_users.begin() + i);
 			break ;
-		}
-	}
+		 }
+	 }
 }
 
 void ChannelsList::set_key(std::string key)
@@ -114,15 +112,15 @@ std::string	ChannelsList::add_or_remove_mode(char action, char mode, std::string
 	else
 	{
 		int mode_pos = this->mode.find(mode);
-		int client_fd = serv.get_client_id(third_param);
 
 		if (mode == 'o')
 		{
+			int client_fd = serv.get_client_fd(third_param);
 			if (client_fd >= 0)
 			{
 				if (action == '+')
 					add_operator(client_fd);
-				else if (is_user_operator(client_fd))
+				else
 					remove_operator(client_fd);
 			}
 		}

@@ -213,6 +213,15 @@ void	Server::printchannels()
 	std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n\n";
 }
 
+int	Server::get_client_fd(std::string nick)
+{
+	int client_id = get_client_id(nick);
+
+	if (client_id >= 0)
+		return (_Clients[client_id].fd);
+	return (ERROR);
+}
+
 int	Server::get_client_id(std::string nick)
 {
 	for (int i = 0; i < _Clients.size(); i++)
@@ -241,6 +250,7 @@ void	Server::send_message_to_channel(int channel_id, std::string message)
 
 void	Server::add_client_to_chan(int channel_id)
 {
+	std::cout << "yo\n";
 	_Channels[channel_id].add_user(Client->fd);
 	Client->opened_channels++;
 	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN " + _Channels[channel_id].name);
