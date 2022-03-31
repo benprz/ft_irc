@@ -99,6 +99,8 @@ class Server
 		void	MODE();
 		void	INVITE();
 		void	NAMES();
+		void	PRIVMSG();
+		void	LIST();
 };
 
 #endif

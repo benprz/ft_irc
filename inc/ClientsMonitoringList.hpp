@@ -11,7 +11,8 @@ class ClientsMonitoringList
 	public:
 		int fd;
 		std::string packet;
-		std::vector<std::string> split_packet;
+		std::string current_command;
+		std::vector<std::string> split_command;
 
 		bool logged;
 		bool registered;
@@ -25,6 +26,7 @@ class ClientsMonitoringList
 
 		ClientsMonitoringList(int fd);
 		int	is_operator();
+		int	is_invisible();
 };
 
 #endif

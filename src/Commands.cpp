@@ -18,64 +18,74 @@ void Server::send_message(int fd, std::string numeric_reply)
 		else if (numeric_reply == RPL_YOUREOPER)
 			message += ":You are now an IRC operator";
 		else if (numeric_reply == RPL_INVITING)
-			message += Client->split_packet[2] + " " + Client->split_packet[1];
+			message += Client->split_command[2] + " " + Client->split_command[1];
 		else if (numeric_reply == RPL_NAMREPLY)
 		{
-			int channel_id = get_channel_id(Client->split_packet[0]);
-			message += Client->split_packet[0] + " :";
+			int channel_id = get_channel_id(Client->split_command[0]);
+			message += Client->split_command[0] + " :";
 			for (int i = 0; i < _Channels[channel_id].users.size(); i++)
 			{
-				if (_Channels[channel_id].is_user_operator(_Channels[channel_id].users[i]))
-					message += '@';
-				message += _Clients[get_client_id(_Channels[channel_id].users[i])].nickname + " ";
+				if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
+				{
+					if (_Channels[channel_id].is_user_operator(_Channels[channel_id].users[i]))
+						message += '@';
+					message += _Clients[get_client_id(_Channels[channel_id].users[i])].nickname + " ";
+				}
 			}
 		}
 		else if (numeric_reply == RPL_ENDOFNAMES)
-			message += Client->split_packet[0] + " :End of /NAMES list";
+			message += Client->split_command[0] + " :End of /NAMES list";
+		else if (numeric_reply == ERR_UNKNOWNCOMMAND)
+			message += Client->current_command + " :Unknown command";
 		else if (numeric_reply == ERR_NOTREGISTERED)
 			message += ":You have not registered";
 		else if (numeric_reply == ERR_NEEDMOREPARAMS)
-			message += Client->split_packet[0] + " :Not enough parameters";
+			message += Client->split_command[0] + " :Not enough parameters";
 		else if (numeric_reply == ERR_ALREADYREGISTRED)
 			message += ":You may not reregister";
 		else if (numeric_reply == ERR_NONICKNAMEGIVEN)
 			message += ":No nickname given";
 		else if (numeric_reply == ERR_ERRONEUSNICKNAME)
-			message += Client->split_packet[1] + " :Erroneus nickname";
+			message += Client->split_command[1] + " :Erroneus nickname";
 		else if (numeric_reply == ERR_NICKNAMEINUSE)
-			message += Client->split_packet[1] + " :Nickname is already in use";
+			message += Client->split_command[1] + " :Nickname is already in use";
 		else if (numeric_reply == ERR_PASSWDMISMATCH)
 			message += ":Password incorrect";
 		else if (numeric_reply == ERR_NOOPERHOST)
 			message += ":No O-lines for your host";
 		else if (numeric_reply == ERR_INVITEONLYCHAN)
-			message += Client->split_packet[0] + " :Cannot join channel (+i)";
+			message += Client->split_command[0] + " :Cannot join channel (+i)";
 		else if (numeric_reply == ERR_TOOMANYCHANNELS)
-			message += Client->split_packet[0] + " :You have joined too many channels";
+			message += Client->split_command[0] + " :You have joined too many channels";
 		else if (numeric_reply == ERR_NOSUCHCHANNEL)
-			message += Client->split_packet[0] + " :No such channel";
+			message += Client->split_command[0] + " :No such channel";
 		else if (numeric_reply == ERR_BADCHANNELKEY)
-			message += Client->split_packet[0] + " :Cannot join channel (+k)";
+			message += Client->split_command[0] + " :Cannot join channel (+k)";
 		else if (numeric_reply == ERR_CHANNELISFULL)
-			message += Client->split_packet[0] + " :Cannot join channel (+l)";
+			message += Client->split_command[0] + " :Cannot join channel (+l)";
 		else if (numeric_reply == ERR_NOTONCHANNEL)
-			message += Client->split_packet[0] + " :You're not on that channel";
+			message += Client->split_command[0] + " :You're not on that channel";
 		else if (numeric_reply == ERR_NOPRIVILEGES)
 			message += ":Permission Denied- You're not an IRC operator";
 		else if (numeric_reply == ERR_CHANOPRIVSNEEDED)
-			message += Client->split_packet[1] + " :You're not channel operator";
+			message += Client->split_command[1] + " :You're not channel operator";
 		else if (numeric_reply == ERR_KEYSET)
-			message += Client->split_packet[1] + " :Channel key already set";
+			message += Client->split_command[1] + " :Channel key already set";
 		else if (numeric_reply == ERR_UNKNOWNMODE)
-			message += Client->split_packet[2][0] + static_cast<std::string>(" :is unknown mode char to me");
+			message += Client->split_command[2][0] + static_cast<std::string>(" :is unknown mode char to me");
 		else if (numeric_reply == ERR_USERSDONTMATCH)
 			message += ":Cant change mode for other users";
 		else if (numeric_reply == ERR_UMODEUNKNOWNFLAG)
 			message += ":Unknown MODE flag";
 		else if (numeric_reply == ERR_USERONCHANNEL)
-			message += Client->split_packet[1] + " " + Client->split_packet[2] + " :is already on channel";
+			message += Client->split_command[1] + " " + Client->split_command[2] + " :is already on channel";
 		else if (numeric_reply == ERR_NOSUCHNICK)
-			message += Client->split_packet[1] + " :No such nick/channel";
+			message += Client->split_command[1] + " :No such nick/channel";
+		else if (numeric_reply == ERR_NORECIPIENT)
+			message += ":No recipient given (" + Client->current_command + ")";
+		else if (numeric_reply == ERR_NOTEXTTOSEND)
+			message += ":No text to send";
+
 	}
 
 	message += CRLF;
@@ -92,9 +102,9 @@ void Server::PASS()
 	Client->logged = 0;
 	if (Client->registered)
 		send_message(ERR_ALREADYREGISTRED);
-	else if (Client->split_packet.size() < 2)
+	else if (Client->split_command.size() < 2)
 		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->split_packet[1] != _password)
+	else if (Client->split_command[1] != _password)
 		send_message(ERR_PASSWDMISMATCH);
 	else
 	{
@@ -106,16 +116,16 @@ void Server::PASS()
 
 void Server::NICK()
 {
-	if (Client->split_packet.size() < 2)
+	if (Client->split_command.size() < 2)
 		send_message(ERR_NONICKNAMEGIVEN);
 	else
 	{
-		std::string nick = Client->split_packet[1];
+		std::string nick = Client->split_command[1];
 		if (nick.size() <= 9 && nick.find_first_not_of(NICK_CHARSET) == std::string::npos)
 		{
-			if (get_client_id(Client->split_packet[1]) == ERROR)
+			if (get_client_id(Client->split_command[1]) == ERROR)
 			{
-				Client->nickname = Client->split_packet[1];
+				Client->nickname = Client->split_command[1];
 				if (Client->logged && Client->username != "" && !Client->registered)
 					send_message(RPL_WELCOME);
 			}
@@ -131,19 +141,19 @@ void Server::USER()
 {
 	if (Client->registered)
 		send_message(ERR_ALREADYREGISTRED);
-	else if (Client->split_packet.size() < 4)
+	else if (Client->split_command.size() < 4)
 		send_message(ERR_NEEDMOREPARAMS);
 	else
 	{
 		//on ignore _split_packet[2] && [3] parce que c'est pour les communications server-server
-		Client->username = Client->split_packet[1];
-		for (int i = 5; i < Client->split_packet.size(); i++)
+		Client->username = Client->split_command[1];
+		for (int i = 5; i < Client->split_command.size(); i++)
 		{
-			Client->split_packet[4] += " ";
-			Client->split_packet[4] += Client->split_packet[i];
+			Client->split_command[4] += " ";
+			Client->split_command[4] += Client->split_command[i];
 		}
-		Client->split_packet[4].erase(0, 1);
-		Client->realname = Client->split_packet[4];
+		Client->split_command[4].erase(0, 1);
+		Client->realname = Client->split_command[4];
 		if (Client->logged && Client->nickname != "")
 			send_message(RPL_WELCOME);
 	}
@@ -154,13 +164,13 @@ void Server::OPER()
 {
 	if (OPER_HOST == 0)
 		send_message(ERR_NOOPERHOST);
-	else if (Client->split_packet.size() < 3)
+	else if (Client->split_command.size() < 3)
 		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->split_packet[2] != OPER_PASSWD)
+	else if (Client->split_command[2] != OPER_PASSWD)
 		send_message(ERR_PASSWDMISMATCH);
 	else
 	{
-		int client_id = get_client_id(Client->split_packet[1]);
+		int client_id = get_client_id(Client->split_command[1]);
 
 		if (client_id >= 0 && _Clients[client_id].mode.find('o') == std::string::npos)
 		{
@@ -172,24 +182,24 @@ void Server::OPER()
 
 void	Server::MODE()
 {
-	if (Client->split_packet.size() < 3)
+	if (Client->split_command.size() < 3)
 		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->split_packet[1][0] == '#')
+	else if (Client->split_command[1][0] == '#')
 	{
-		int channel_id = get_channel_id(Client->split_packet[1]);
+		int channel_id = get_channel_id(Client->split_command[1]);
 		if (channel_id >= 0)
 		{
 			if (_Channels[channel_id].is_user_operator(Client->fd))
 			{
-				char action = Client->split_packet[2][0];
+				char action = Client->split_command[2][0];
 				if (action == '+' || action == '-')
 				{
 					std::string	err;
-					std::string third_param = Client->split_packet.size() > 3 ? Client->split_packet[3] : "";
-					for (int i = 1; i < Client->split_packet[2].size(); i++)
+					std::string third_param = Client->split_command.size() > 3 ? Client->split_command[3] : "";
+					for (int i = 1; i < Client->split_command[2].size(); i++)
 					{
-						Client->split_packet[2][0] = Client->split_packet[2][i];
-						if ((err = _Channels[channel_id].add_or_remove_mode(action, Client->split_packet[2][i], third_param, *this)) != "")
+						Client->split_command[2][0] = Client->split_command[2][i];
+						if ((err = _Channels[channel_id].add_or_remove_mode(action, Client->split_command[2][i], third_param, *this)) != "")
 							send_message(err);
 					}
 					printchannels();
@@ -203,26 +213,26 @@ void	Server::MODE()
 	}
 	else
 	{
-		int client_id = get_client_id(Client->split_packet[1]);
+		int client_id = get_client_id(Client->split_command[1]);
 		if (client_id >= 0 && _Clients[client_id].fd == Client->fd)
 		{
-			char action = Client->split_packet[2][0];
+			char action = Client->split_command[2][0];
 			if (action == '+' || action == '-')
 			{
-				for (int i = 1; i < Client->split_packet[2].size(); i++)
+				for (int i = 1; i < Client->split_command[2].size(); i++)
 				{
-					if (static_cast<std::string>(USER_MODES).find(Client->split_packet[2][i]) != std::string::npos)
+					if (static_cast<std::string>(USER_MODES).find(Client->split_command[2][i]) != std::string::npos)
 					{
-						if (action == '+' && Client->split_packet[2][i] == 'i')
+						if (action == '+' && Client->split_command[2][i] == 'i')
 							Client->mode += 'i';
 						else if (action == '-')
 						{
-							int pos = Client->mode.find(Client->split_packet[2][i]);
+							int pos = Client->mode.find(Client->split_command[2][i]);
 							if (pos != std::string::npos)
 								Client->mode.erase(Client->mode.begin() + pos);
 						}
-						if (Client->split_packet[2][i] != 'o' && action != '+')
-							send_message(Client->nickname + " MODE " + action + Client->split_packet[2][i]);
+						if (Client->split_command[2][i] != 'o' && action != '+')
+							send_message(Client->nickname + " MODE " + action + Client->split_command[2][i]);
 					}
 					else
 						send_message(ERR_UMODEUNKNOWNFLAG);
@@ -231,6 +241,44 @@ void	Server::MODE()
 		}
 		else
 			send_message(ERR_USERSDONTMATCH);
+	}
+}
+
+void	Server::PRIVMSG()
+{
+	if (Client->split_command.size() < 2)
+		send_message(ERR_NORECIPIENT);
+	else if (Client->split_command.size() < 3)
+		send_message(ERR_NOTEXTTOSEND);
+	else
+	{
+		if (Client->split_command[2][0] == ':')
+		{
+			std::string prefix = get_current_client_prefix() + " PRIVMSG ";
+
+			std::string text = Client->split_command[2];
+			for (int i = 3; i < Client->split_command.size(); i++)
+				text += " " + Client->split_command[i];
+
+			std::vector<std::string> split_receivers = string_split(Client->split_command[1], ',');
+			for (int i = 0; i < split_receivers.size(); i++)
+			{
+				Client->split_command[1] = split_receivers[i];
+				std::string message = prefix + split_receivers[i] + " " + text;
+				if (split_receivers[i][0] == '#')
+				{
+					int channel_id = get_channel_id(split_receivers[i]);
+					if (channel_id >= 0)
+						send_message_to_channel(channel_id, message);
+				}
+				else
+				{
+					int client_fd = get_client_fd(split_receivers[i]);
+					if (client_fd >= 0)
+						send_message(client_fd, message);
+				}
+			}
+		}
 	}
 }
 
@@ -334,25 +382,25 @@ void	Server::remove_client_from_chan(int channel_id, std::string reason)
 
 void	Server::INVITE()
 {
-	if (Client->split_packet.size() < 3)
+	if (Client->split_command.size() < 3)
 		send_message(ERR_NEEDMOREPARAMS);
 	else
 	{
-		int channel_id = get_channel_id(Client->split_packet[2]);
+		int channel_id = get_channel_id(Client->split_command[2]);
 		if (channel_id >= 0)
 		{
-			Client->split_packet[0] = Client->split_packet[2];
+			Client->split_command[0] = Client->split_command[2];
 			if (_Channels[channel_id].is_user_on_channel(Client->fd))
 			{
 				if (_Channels[channel_id].is_user_operator(Client->fd))
 				{
-					int client_fd = get_client_fd(Client->split_packet[1]);
+					int client_fd = get_client_fd(Client->split_command[1]);
 					if (client_fd >= 0)
 					{
 						if (!_Channels[channel_id].is_user_on_channel(client_fd))
 						{
 							_Channels[channel_id].add_user_to_invite_list(client_fd);
-							send_message(client_fd, Client->nickname + " INVITE " + Client->split_packet[1] + " " + Client->split_packet[2]);
+							send_message(client_fd, Client->nickname + " INVITE " + Client->split_command[1] + " " + Client->split_command[2]);
 							send_message(RPL_INVITING);
 						}
 						else
@@ -369,7 +417,7 @@ void	Server::INVITE()
 		}
 		else
 		{
-			Client->split_packet[1] = Client->split_packet[2];
+			Client->split_command[1] = Client->split_command[2];
 			send_message(ERR_NOSUCHNICK);
 		}
 	}
@@ -379,26 +427,26 @@ void	Server::PART()
 {
 	int channel_id;
 
-	if (Client->split_packet.size() < 2)
+	if (Client->split_command.size() < 2)
 		send_message(ERR_NEEDMOREPARAMS);
 	else
 	{
-		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
+		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
 		for (int i = 0; i < split_channels.size(); i++)
 		{
-			Client->split_packet[0] = split_channels[i];
+			Client->split_command[0] = split_channels[i];
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
 				if (_Channels[channel_id].is_user_on_channel(Client->fd))
 				{
 					std::string part_reason;
-					if (Client->split_packet.size() > 2)
+					if (Client->split_command.size() > 2)
 					{
 						part_reason += " :";
-						for (int i = 2; i < Client->split_packet.size(); i++)
+						for (int i = 2; i < Client->split_command.size(); i++)
 						{
-							part_reason += Client->split_packet[i];
-							if (i < Client->split_packet.size() - 1)
+							part_reason += Client->split_command[i];
+							if (i < Client->split_command.size() - 1)
 								part_reason += " ";
 						}
 					}
@@ -415,24 +463,24 @@ void	Server::PART()
 
 void	Server::JOIN()
 {
-	if (Client->split_packet.size() < 2)
+	if (Client->split_command.size() < 2)
 		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->split_packet[1] == "0")
+	else if (Client->split_command[1] == "0")
 		remove_client_from_all_chans();
 	else
 	{
-		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
+		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
 		std::vector<std::string> split_keys;
 		int channel_id;
-		if (Client->split_packet.size() == 3)
-			split_keys = string_split(Client->split_packet[2], ',');
+		if (Client->split_command.size() == 3)
+			split_keys = string_split(Client->split_command[2], ',');
 		for (int i = 0; i < split_channels.size(); i++)
 		{
 			if (split_channels[i][0] != '#')
 				send_message(ERR_NOSUCHCHANNEL);
 			else
 			{
-				Client->split_packet[0] = split_channels[i];
+				Client->split_command[0] = split_channels[i];
 				if (Client->opened_channels == MAX_ALLOWED_CHANNELS_PER_CLIENT)
 				{
 					send_message(ERR_TOOMANYCHANNELS);
@@ -479,15 +527,15 @@ void	Server::JOIN()
 	}
 }
 
-void Server::KILL(void)
+void Server::KILL()
 {
-	if (Client->split_packet.size() < 2)
+	if (Client->split_command.size() < 2)
 		send_message(ERR_NEEDMOREPARAMS);
 	if (!Client->is_operator())
 		send_message(ERR_NOPRIVILEGES);
 	else
 	{
-		int client_id = get_client_id(Client->split_packet[1]);
+		int client_id = get_client_id(Client->split_command[1]);
 		if (client_id >= 0)
 			remove_client(client_id);
 		else
@@ -495,42 +543,50 @@ void Server::KILL(void)
 	}
 }
 
-void Server::QUIT(void)
+void Server::QUIT()
 {
 	std::string message = Client->nickname + " QUIT";
-	if (Client->split_packet.size() > 1 && Client->split_packet[1][0] == ':')
+	if (Client->split_command.size() > 1 && Client->split_command[1][0] == ':')
 	{
-		Client->split_packet[1].erase(Client->split_packet[1].begin());
-		for (int i = 1; i < Client->split_packet.size(); i++)
-			message += " " + Client->split_packet[i];
+		Client->split_command[1].erase(Client->split_command[1].begin());
+		for (int i = 1; i < Client->split_command.size(); i++)
+			message += " " + Client->split_command[i];
 	}
 	else
-		message += " is leaving the server";
+		message += " leaving the server";
 	send_message(message);
 	remove_client();
+}
+
+void Server::LIST()
+{
+	for (int i = 0; i < _Channels.size(); i++)
+	{
+		
+	}
 }
 
 void Server::NAMES()
 {
 	int channel_id;
 
-	if (Client->split_packet.size() > 1)
+	if (Client->split_command.size() > 1)
 	{
-		std::vector<std::string> split_channels = string_split(Client->split_packet[1], ',');
+		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
 		for (int i = 0; i < split_channels.size(); i++)
 		{
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
 				if (_Channels[channel_id].is_secret() == 0 && _Channels[channel_id].is_private() == 0)
 				{
-					Client->split_packet[0] = split_channels[i];
+					Client->split_command[0] = split_channels[i];
 					send_message(RPL_NAMREPLY);
 				}
 			}
 		}
-		Client->split_packet[0] = split_channels[0];
+		Client->split_command[0] = split_channels[0];
 		for (int i = 1; i < split_channels.size(); i++)
-			Client->split_packet[0] += " " + split_channels[i];
+			Client->split_command[0] += " " + split_channels[i];
 	}
 	else
 	{
@@ -538,18 +594,18 @@ void Server::NAMES()
 		{
 			if (_Channels[i].is_secret() == 0 && _Channels[i].is_private() == 0)
 			{
-				Client->split_packet[0] = _Channels[i].name;
+				Client->split_command[0] = _Channels[i].name;
 				send_message(RPL_NAMREPLY);
 			}
 		}
-		Client->split_packet[0] = '*';
+		Client->split_command[0] = '*';
 	}
 	send_message(RPL_ENDOFNAMES);
 }
 
 int Server::parse_command()
 {
-	std::string command = Client->split_packet[0];
+	std::string command = Client->split_command[0];
 	if (command == "PASS")
 		PASS();
 	else if (command == "NICK")
@@ -576,6 +632,10 @@ int Server::parse_command()
 				KILL();
 			else if (command == "NAMES")
 				NAMES();
+			else if (command == "PRIVMSG")
+				PRIVMSG();
+			else if (command == "NOTICE")
+				PRIVMSG();
 			else
 				return (ERROR);
 		}

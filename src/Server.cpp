@@ -212,21 +212,19 @@ void    Server::remove_client()
 
 void Server::parse_client_packet(std::string packet)
 {
-	std::string current_command;
 	int newline_pos;
 
 	Client = &_Clients[get_client_id(pfds[current_pfd].fd)];
 	Client->packet += packet;
 	while ((newline_pos = Client->packet.find("\n")) != std::string::npos)
 	{
-		current_command = Client->packet.substr(0, newline_pos);
-		current_command.erase(std::remove(current_command.begin(), current_command.end(), '\r'));
-
+		Client->current_command = Client->packet.substr(0, newline_pos);
+		Client->current_command.erase(std::remove(Client->current_command.begin(), Client->current_command.end(), '\r'));
 
 		Client->packet.erase(0, newline_pos + 1);
-		Client->split_packet = string_split(current_command, ' ');
+		Client->split_command = string_split(Client->current_command, ' ');
 		if (parse_command())
-			send(Client->fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
+			send_message(ERR_UNKNOWNCOMMAND);
 	}
 }
 
