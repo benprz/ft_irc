@@ -95,6 +95,7 @@ class Server
 		void	JOIN();
 		void	PART();
 		void	KILL();
+		void	KICK();
 		void	QUIT();
 		void	MODE();
 		void	INVITE();

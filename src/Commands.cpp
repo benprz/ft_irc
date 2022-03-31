@@ -543,7 +543,34 @@ void Server::KILL()
 	}
 }
 
-void Server::QUIT()
+void Server::KICK(void)
+{
+	int channel_id = -1;
+	std::vector<std::string> param = Client->split_command;
+	std::size_t found = Client->mode.rfind("o");
+	if (found != std::string::npos)
+	{
+		send_message(ERR_CHANOPRIVSNEEDED);
+		return;
+	}
+	if (param.size() < 2)
+	{
+		send_message(ERR_NEEDMOREPARAMS);
+		return;
+	}
+	channel_id = get_channel_id(param[0]);
+	if (channel_id == -1)
+	{
+		send_message(ERR_BADCHANMASK);
+		return;
+	}
+	int client_id = get_client_id(param[1]);
+	int client_fd = _Clients[client_id].fd;
+	if (_Channels[channel_id].is_user_on_channel(client_fd))
+		_Channels[channel_id].remove_user(client_fd);
+}
+
+void Server::QUIT(void)
 {
 	std::string message = Client->nickname + " QUIT";
 	if (Client->split_command.size() > 1 && Client->split_command[1][0] == ':')
@@ -630,6 +657,8 @@ int Server::parse_command()
 				INVITE();
 			else if (command == "KILL")
 				KILL();
+			else if (command == "KICK")
+				KICK();
 			else if (command == "NAMES")
 				NAMES();
 			else if (command == "PRIVMSG")
