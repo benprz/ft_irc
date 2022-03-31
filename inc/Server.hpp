@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <iterator>
 
 #include <poll.h>
 #include <sys/types.h>
@@ -102,6 +103,7 @@ class Server
 		void	OPER();
 		void	JOIN();
 		void	KILL();
+		void	KICK();
 		void	QUIT();
 		void	SQUIT();
 };

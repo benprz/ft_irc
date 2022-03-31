@@ -145,7 +145,7 @@ void Server::OPER()
 		while (_Clients[i].nickname != Client->split_packet[1] && i <= MAX_ALLOWED_CLIENTS)
 			i++;
 		if (i <= MAX_ALLOWED_CLIENTS)
-		_Clients[i].mode += 'o';
+			_Clients[i].mode += 'o';
 		send_message(RPL_YOUREOPER);
 		std::cout << _Clients[i].nickname << " " << _Clients[i].mode << std::endl; // del
 	}
@@ -257,6 +257,39 @@ void Server::KILL(void)
 	}
 	else
 		send_message(ERR_NOPRIVILEGES);
+}
+
+void Server::KICK(void)
+{
+	int channel_id = -1;
+	std::vector<std::string> param = Client->split_packet;
+	std::size_t found = Client->mode.rfind("o");
+	if (found != std::string::npos)
+	{
+		send_message(ERR_CHANOPRIVSNEEDED);
+		return;
+	}
+	if (param.size() < 2)
+	{
+		send_message(ERR_NEEDMOREPARAMS);
+		return;
+	}
+	channel_id = get_channel_id(param[0]);
+	if (channel_id == -1)
+	{
+		send_message(ERR_BADCHANMASK);
+		return;
+	}
+	int client_id = get_clien
+	int i = 1;
+	while (_Clients[i].nickname != param[1] && i <= MAX_ALLOWED_CLIENTS)
+		i++;
+	if (i <= MAX_ALLOWED_CLIENTS)
+	{
+		for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+			if (_Channels[channel_id].users == i)
+	
+	}
 }
 
 void Server::QUIT(void)
