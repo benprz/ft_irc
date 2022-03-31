@@ -7,10 +7,8 @@ Server::Server() : _port(666), _password("dumbpassword")
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
 	_server_fd = create_server_fd();
+	bzero(pfds, sizeof(pfds));
 	nfds = 0;
-	nchannels = 0;
-	bzero(_Clients, sizeof(_Clients));
-	bzero(_Channels, sizeof(_Channels));
 }
 
 Server::~Server()
@@ -20,26 +18,46 @@ Server::~Server()
 
 void	Server::printpfds() // debug
 {
-	nfds_t npfds2 = nfds;
-
-	std::cout << "\n#-------- pfds list ---------#\n";
+	std::cout << "\n#-------- pfds list ---------#\n\n";
 	std::cout << "pfds[" << 0 << "]" << std::endl;
 	std::cout << "	fd=" << pfds[0].fd << std::endl;
 	std::cout << "	events=" << pfds[0].events << std::endl;
 	std::cout << "	revents=" << pfds[0].revents << std::endl;
-	for (int i = 1; i < npfds2; i++)
+	for (int i = 1; i < MAX_ALLOWED_CLIENTS; i++)
 	{
-		if (pfds[i].fd == -1)
-		{
-			npfds2++;
+		if (pfds[i].events == 0)
 			continue ;
-		}
 		std::cout << std::endl << "pfds[" << i << "]" << std::endl;
 		std::cout << "	fd=" << pfds[i].fd << std::endl;
 		std::cout << "	events=" << pfds[i].events << std::endl;
 		std::cout << "	revents=" << pfds[i].revents << std::endl;
 	}
-	std::cout << "#----------------------------#\n\n";
+	if (_Clients.size())
+	{
+		std::cout << std::endl << "#-------- clients list -------#\n\n";
+		std::cout << "Clients[" << 0 << "]" << std::endl;
+		std::cout << "	fd=" << _Clients[0].fd << std::endl;
+		std::cout << "	logged=" << _Clients[0].logged << std::endl;
+		std::cout << "	registered=" << _Clients[0].registered << std::endl;
+		std::cout << "	nickname=" << _Clients[0].nickname << std::endl;
+		std::cout << "	username=" << _Clients[0].username << std::endl;
+		std::cout << "	realname=" << _Clients[0].realname << std::endl;
+		std::cout << "	mode=" << _Clients[0].mode << std::endl;
+		std::cout << "	opened_channels=" << _Clients[0].opened_channels << std::endl;
+		for (int i = 1; i < _Clients.size(); i++)
+		{
+			std::cout << std::endl << "Clients[" << i << "]" << std::endl;
+			std::cout << "	fd=" << _Clients[i].fd << std::endl;
+			std::cout << "	logged=" << _Clients[i].logged << std::endl;
+			std::cout << "	registered=" << _Clients[i].registered << std::endl;
+			std::cout << "	nickname=" << _Clients[i].nickname << std::endl;
+			std::cout << "	username=" << _Clients[i].username << std::endl;
+			std::cout << "	realname=" << _Clients[i].realname << std::endl;
+			std::cout << "	mode=" << _Clients[i].mode << std::endl;
+			std::cout << "	opened_channels=" << _Clients[i].opened_channels << std::endl;
+		}
+	}
+	std::cout << "\n#-----------------------------#\n\n";
 }
 
 int Server::create_server_fd(void) const
@@ -105,49 +123,111 @@ int Server::create_server_fd(void) const
 	return (server_fd);
 }
 
-//overwrite sur un descriptor qui a ete remove (mis a -1)
+std::vector<std::string> Server::string_split(std::string s, const char delimiter)
+{
+	size_t start = 0;
+	size_t end = s.find_first_of(delimiter);
+
+	std::vector<std::string> output;
+
+	while (end <= std::string::npos)
+	{
+		output.__emplace_back(s.substr(start, end - start));
+
+		if (end == std::string::npos)
+			break;
+
+		start = end + 1;
+		end = s.find_first_of(delimiter, start);
+	}
+	return output;
+}
+
 void    Server::add_client(int fd)
 {
-	nfds_t i = 0;
-
-	while (i < nfds)
+	std::cout << "Add client! fd=" << fd << std::endl;
+	for (int i = 0; i < MAX_ALLOWED_CLIENTS; i++)
 	{
-		if (pfds[i].fd == -1)
+		if (pfds[i].events == 0)
+		{
+			if (i > 0)
+				_Clients.push_back(fd);
+			pfds[i].fd = fd;
+			pfds[i].events = POLLIN;
+			nfds++;
+			std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nfds=" << nfds + 1 << std::endl;
+			printpfds();
 			break ;
-		i++;
+		}
 	}
-	std::cout << "Added fd=" << fd << " to pfds[" << i << "] with an actual nbpfds=" << nfds + 1 << std::endl;
-	if (i > 0)
+}
+
+void	Server::remove_client_from_all_chans(int client_fd)
+{
+	for (int i = 0; i < _Channels.size(); i++)
 	{
-		bzero(&_Clients[i], sizeof(ClientsMonitoringList));
-		_Clients[i].fd = fd;
+		if (_Channels[i].is_user_on_channel(client_fd))
+			remove_client_from_chan(i, "");
 	}
-    pfds[i].fd = fd;
-    pfds[i].events = POLLIN;
-    nfds++;
-	printpfds();
+}
+
+void	Server::remove_client_from_all_chans()
+{
+	remove_client_from_all_chans(Client->fd);
+}
+
+int	Server::get_pfd_id(int fd)
+{
+	for (int i = 0; i < MAX_ALLOWED_CLIENTS; i++)
+	{
+		if (pfds[i].fd == fd)
+			return (i);
+	}
+	return (ERROR);
+}
+
+void    Server::remove_client(int fd)
+{
+	int pfd_id = get_pfd_id(fd);
+	int client_id = get_client_id(fd);
+
+	if (pfd_id >= 0 && client_id >= 0)
+	{
+		remove_client_from_all_chans(_Clients[client_id].fd);
+		_Clients.erase(_Clients.begin() + client_id);
+
+		close(pfds[pfd_id].fd);
+		pfds[pfd_id].fd = -1;
+		pfds[pfd_id].events = 0;
+		pfds[pfd_id].revents = 0;
+
+		printpfds();
+	}
 }
 
 void    Server::remove_client()
 {
-	close(pfds[current_pfd].fd);
-	_Clients[current_pfd].fd = -1;
-	pfds[current_pfd].fd = -1;
-	pfds[current_pfd].events = 0;
-	pfds[current_pfd].revents = 0;
-	nfds--;
-	printpfds();
+	remove_client(Client->fd);
 }
 
-void    Server::remove_client(nfds_t kill_pfd)
+void Server::parse_client_packet(std::string packet)
 {
-	close(pfds[kill_pfd].fd);
-	_Clients[kill_pfd].fd = -1;
-	pfds[kill_pfd].fd = -1;
-	pfds[kill_pfd].events = 0;
-	pfds[kill_pfd].revents = 0;
-	nfds--;
-	printpfds();
+	std::string current_command;
+	int newline_pos;
+
+	Client = &_Clients[get_client_id(pfds[current_pfd].fd)];
+	Client->packet += packet;
+	while ((newline_pos = Client->packet.find("\n")) != std::string::npos)
+	{
+		current_command = Client->packet.substr(0, newline_pos);
+		current_command.erase(std::remove(current_command.begin(), current_command.end(), '\r'));
+
+
+		Client->packet.erase(0, newline_pos + 1);
+		Client->split_packet = string_split(current_command, ' ');
+		if (parse_command())
+			send(Client->fd, "Error: unknown command\n", strlen("Error: unknown command\n"), 0);
+	}
 }
 
 void Server::launch(void)
@@ -156,52 +236,61 @@ void Server::launch(void)
 	char	recv_buf[RECV_BUF_SIZE + 1];
 	ssize_t	recv_length;
 
-    //on ajoute server_fd au tableau pollfd requis pour poll
-	add_client(_server_fd);
-	while (1)
+	if (_server_fd != ERROR)
 	{
-		if ((nb_ready_clients = poll(pfds, nfds, -1)) == -1)
+		//on ajoute server_fd au tableau pollfd requis pour poll
+		add_client(_server_fd);
+		while (1)
 		{
-			std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
-			break ;
-		}
-		for (current_pfd = 0; current_pfd < nfds; current_pfd++)
-		{
-			if (pfds[current_pfd].revents & POLLIN)
+			if ((nb_ready_clients = poll(pfds, nfds, -1)) == -1)
 			{
-				// 0 étant l'index dans le tableau pfds pour server_fd
-				if (current_pfd == 0)
-				{
-                    // fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
-					if ((client_fd = accept(_server_fd, NULL, 0)) == -1)
-					{
-						std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
+				std::cout << "Client monitoring error " << errno << " -> poll() : " << strerror(errno) << std::endl;
+				break ;
+			}
+			for (current_pfd = 0; current_pfd < MAX_ALLOWED_CLIENTS; current_pfd++)
+			{
+				if (!nb_ready_clients)
 						break ;
-					}
-					add_client(client_fd);
-				}
-				else
+				if (pfds[current_pfd].revents & POLLIN)
 				{
-					recv_length = recv(pfds[current_pfd].fd, recv_buf, RECV_BUF_SIZE, 0); 
-					//si y'a une erreur
-					if (recv_length < 0)
+					nb_ready_clients--;
+					// 0 étant l'index dans le tableau pfds pour server_fd
+					if (current_pfd == 0)
 					{
-						std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[current_pfd].events << " revents=" << pfds[current_pfd].revents << std::endl;
-						std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
-						remove_client();
-						continue ;
+						// fcntl O_NONBLOCK du coup la fonction se bloque pas si elle a pas de nouvelles connexions
+						if ((client_fd = accept(_server_fd, NULL, 0)) == -1)
+						{
+							std::cout << "Client monitoring error " << errno << " -> accept() : " << strerror(errno) << std::endl;
+							break ;
+						}
+						add_client(client_fd);
 					}
-					//la connexion s'est coupée, EOF, on supprime donc le fd
-					else if (recv_length == 0)
+					else
 					{
-						std::cout << "Connexion stopped with client_fd=" << client_fd << std::endl;
-						remove_client();
-					}
-					//on a reçu un paquet! on l'ouvre :-)
-					else 
-					{
-						recv_buf[recv_length] = 0;
-						parse_client_packet(recv_buf);
+						recv_length = recv(pfds[current_pfd].fd, recv_buf, RECV_BUF_SIZE, 0); 
+						//si y'a une erreur
+						if (recv_length < 0)
+						{
+							std::cout << "Error connexion stopped with client fd=" << client_fd <<  " events=" << pfds[current_pfd].events << " revents=" << pfds[current_pfd].revents << std::endl;
+							std::cout << "Client monitoring error " << errno << " -> recv() : " << strerror(errno) << std::endl;
+							remove_client(pfds[current_pfd].fd);
+							continue ;
+						}
+						//la connexion s'est coupée, EOF, on supprime donc le fd
+						else if (recv_length == 0)
+						{
+							std::cout << "Connexion stopped with client_fd=" << pfds[current_pfd].fd << std::endl;
+							remove_client(pfds[current_pfd].fd);
+						}
+						//on a reçu un paquet! on l'ouvre :-)
+						else 
+						{
+							recv_buf[recv_length] = 0;
+							std::cout << std::endl;
+							std::cout << "# NEW PACKET FROM (current_pfd=" << current_pfd << ", fd=" << pfds[current_pfd].fd << ")" << std::endl;
+							std::cout << recv_buf << std::endl;
+							parse_client_packet(recv_buf);
+						}
 					}
 				}
 			}

@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <iterator>
+#include <algorithm>
 
 #include <poll.h>
 #include <sys/types.h>
@@ -26,33 +26,16 @@
 #define RECV_BUF_SIZE 512
 
 #define MAX_ALLOWED_CLIENTS 100
+#define MAX_ALLOWED_CHANNELS_PER_CLIENT 10
 #define OPER_HOST 1
 #define OPER_PASSWD "oper123"
 
+#define USER_MODES "io" // "iswo" mais s et w ne sont pas utilisés
+#define NICK_CHARSET "AZERTYUIOPQSDFGHJKLMWXCVBNazertyuiopqsdfghjklmwxcvbn1234567890[]\\`_^{}|"
 #define CRLF "\r\n"
 
+#include "ClientsMonitoringList.hpp"
 #include "ChannelsList.hpp"
-
-class ClientsMonitoringList
-{
-	public:
-		int fd;
-		std::string packet;
-		std::vector<std::string> split_packet;
-
-		bool logged;
-		bool registered;
-		bool oper;
-		std::string nickname;
-		std::string username;
-		std::string realname;
-		std::string hostname;
-		std::string	mode;
-
-		int opened_channels;
-
-		//~ClientsMonitoringList() {};
-};
 
 class Server
 {
@@ -62,8 +45,8 @@ class Server
 		int const			_port;
 		std::string const	_password;
 
-		ClientsMonitoringList 	_Clients[MAX_ALLOWED_CLIENTS]; //Le premier client est à [1], le [0] est vide c pour le serveur
-		ChannelsList			_Channels[MAX_ALLOWED_CHANNELS];
+		std::vector<ClientsMonitoringList> 	_Clients;
+		std::vector<ChannelsList>			_Channels;
 
 		Server();
 
@@ -72,7 +55,6 @@ class Server
 		nfds_t					nfds;
 		nfds_t					current_pfd;
 		ClientsMonitoringList	*Client;
-		int						nchannels;
 
 		Server(int const port, std::string const password);
 		Server(Server const &instance);
@@ -82,19 +64,28 @@ class Server
 		void launch(void);
 		int	create_server_fd(void) const;
 		void add_client(int fd);
+		void remove_client(int fd);
 		void remove_client();
-		void remove_client(nfds_t kill_pfd);
+		void remove_client_from_all_chans(int client_fd);
+		void remove_client_from_all_chans();
 		void printpfds(); // debug
+		void printchannels(); //debug
 
 		void	parse_client_packet(std::string packet);
 		std::vector<std::string> string_split(std::string s, const char delimiter);
 		int	parse_command();
-		void		send_message(std::string error);
+		void send_message(std::string error);
+		void send_message(int fd, std::string numeric_reply);
+		void send_message_to_channel(int channel_id, std::string message);
 
-		int			check_if_nickname_is_erroneous(std::string split_packet);
-		int			check_if_nickname_is_already_used(std::string nickname);
 		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
+		int			get_pfd_id(int fd);
 		int			get_channel_id(std::string channel);
+		int			get_client_id(std::string nick);
+		int			get_client_id(int fd);
+		int			get_client_fd(std::string nick);
+		void		add_client_to_chan(int channel_id);
+		void		remove_client_from_chan(int channel_id, std::string reason);
 
 		// commands
 		void	PASS();
@@ -102,10 +93,13 @@ class Server
 		void	USER();
 		void	OPER();
 		void	JOIN();
+		void	PART();
 		void	KILL();
 		void	KICK();
 		void	QUIT();
-		void	SQUIT();
+		void	MODE();
+		void	INVITE();
+		void	NAMES();
 };
 
 #endif
