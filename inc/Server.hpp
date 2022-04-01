@@ -86,6 +86,7 @@ class Server
 		int			get_client_fd(std::string nick);
 		void		add_client_to_chan(int channel_id);
 		void		remove_client_from_chan(int channel_id, std::string reason);
+		int 		count_visible_users_on_channel(int channel_id);
 
 		// commands
 		void	PASS();

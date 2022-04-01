@@ -53,7 +53,7 @@ void Server::send_message(int fd, std::string numeric_reply)
 			else
 			{
 				int channel_id = get_channel_id(Client->split_command[0]);
-				message += Client->split_command[0] + " :" + _Channels[channel_id].topic;
+				message += Client->split_command[0] + " " + std::to_string(count_visible_users_on_channel(channel_id)) + " :" + _Channels[channel_id].topic;
 			}
 		}
 		else if (numeric_reply == RPL_LISTEND)
@@ -125,6 +125,17 @@ void Server::send_message(int fd, std::string numeric_reply)
 void Server::send_message(std::string numeric_reply)
 {
 	send_message(Client->fd, numeric_reply);
+}
+
+int Server::count_visible_users_on_channel(int channel_id)
+{
+	int count = 0;
+	for (int i = 0; i < _Channels[channel_id].users.size(); i++)
+	{
+		if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
+			count++;
+	}
+	return (count);
 }
 
 void Server::PASS()
@@ -713,15 +724,11 @@ void Server::TOPIC()
 				{
 					if (_Channels[channel_id].is_user_operator(Client->fd))
 					{
-						if (Client->split_command[2][0] == ':')
-						{
-							int pos = Client->current_command.find(':');
-							if (pos != std::string::npos)
-							{
-								_Channels[channel_id].topic = Client->current_command.substr(pos + 1);
-								send_message_to_channel(channel_id, Client->nickname + " TOPIC " + _Channels[channel_id].name + " :" + _Channels[channel_id].topic);
-							}
-						}
+						std::string topic;
+						for (int i = 2; i < Client->split_command.size(); i++)
+							topic += Client->split_command[i];
+						_Channels[channel_id].topic = topic;
+						send_message_to_channel(channel_id, Client->nickname + " TOPIC " + _Channels[channel_id].name + " :" + _Channels[channel_id].topic);
 					}
 					else
 						send_message(ERR_CHANOPRIVSNEEDED);
