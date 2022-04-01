@@ -69,6 +69,9 @@ class Server
 		void remove_client();
 		void remove_client_from_all_chans(int client_fd);
 		void remove_client_from_all_chans();
+		void add_client_to_chan(int channel_id);
+		void remove_client_from_chan(int channel_id, std::string reason);
+		void remove_client_from_chan(std::string reason);
 		void printpfds(); // debug
 		void printchannels(); //debug
 
@@ -85,8 +88,6 @@ class Server
 		int			get_client_id(std::string nick);
 		int			get_client_id(int fd);
 		int			get_client_fd(std::string nick);
-		void		add_client_to_chan(int channel_id);
-		void		remove_client_from_chan(int channel_id, std::string reason);
 		int 		count_visible_users_on_channel(int channel_id);
 		void		edit_channel_modes();
 		int			add_or_remove_special_mode_channel(char action, char mode, std::string param);

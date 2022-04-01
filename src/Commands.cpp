@@ -56,12 +56,9 @@ void Server::send_message(int fd, std::string numeric_reply)
 		else if (numeric_reply == RPL_CHANNELMODEIS)
 			message += Channel->name + " +" + Channel->modes;
 		else if (numeric_reply == RPL_NOTOPIC)
-			message += Client->split_command[0] + " :No topic is set";
+			message += Channel->name + " :No topic is set";
 		else if (numeric_reply == RPL_TOPIC)
-		{
-			int channel_id = get_channel_id(Client->split_command[0]);
-			message += Client->split_command[0] + " :" + _Channels[channel_id].topic;
-		}
+			message += Channel->name + " :" + Channel->topic;
 		else if (numeric_reply == RPL_UMODEIS)
 			message += "+" + Client->modes;
 		else if (numeric_reply == ERR_UNKNOWNCOMMAND)
@@ -498,7 +495,10 @@ void	Server::send_message_to_channel(int channel_id, std::string message)
 		if (!_Channels[channel_id].is_moderated() || (_Channels[channel_id].is_moderated() && _Channels[channel_id].is_user_operator(Client->fd)))
 		{
 			for (int j = 0; j < _Channels[channel_id].users.size(); j++)
-				send_message(_Channels[channel_id].users[j], message);
+			{
+				if (Client->split_command[0] != "PRIVMSG" || (Client->split_command[0] == "PRIVMSG" && Client->fd != _Channels[channel_id].users[j]))
+					send_message(_Channels[channel_id].users[j], message);
+			}
 		}
 	}
 }
@@ -523,13 +523,18 @@ void	Server::add_client_to_chan(int channel_id)
 
 void	Server::remove_client_from_chan(int channel_id, std::string reason)
 {
-	send_message_to_channel(channel_id, ":" + Client->get_prefix() + " PART " + _Channels[channel_id].name + reason);
+	send_message_to_channel(channel_id, Client->get_prefix() + " PART " + _Channels[channel_id].name + reason);
 	_Channels[channel_id].remove_user(Client->fd);
 	Client->opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
 		_Channels.erase(_Channels.begin() + channel_id);
 	std::cout << "Removed user fd=" << Client->fd << " from channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
 	printchannels();
+}
+
+void	Server::remove_client_from_chan(std::string reason)
+{
+	remove_client_from_chan(get_channel_id(Channel->name), reason);
 }
 
 void	Server::INVITE()
@@ -552,7 +557,7 @@ void	Server::INVITE()
 						if (!_Channels[channel_id].is_user_on_channel(client_fd))
 						{
 							_Channels[channel_id].add_user_to_invite_list(client_fd);
-							send_message(client_fd, Client->nickname + " INVITE " + Client->split_command[1] + " " + Client->split_command[2]);
+							send_message(client_fd, Client->get_prefix() + " INVITE " + Client->split_command[1] + " " + Client->split_command[2]);
 							send_message(RPL_INVITING);
 						}
 						else
@@ -589,7 +594,8 @@ void	Server::PART()
 			Client->split_command[0] = split_channels[i];
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
-				if (_Channels[channel_id].is_user_on_channel(Client->fd))
+				Channel = &_Channels[channel_id];
+				if (Channel->is_user_on_channel(Client->fd))
 				{
 					std::string part_reason;
 					if (Client->split_command.size() > 2)
@@ -602,7 +608,7 @@ void	Server::PART()
 								part_reason += " ";
 						}
 					}
-					remove_client_from_chan(channel_id, part_reason);
+					remove_client_from_chan(part_reason);
 				}
 				else
 					send_message(ERR_NOTONCHANNEL);
@@ -813,17 +819,18 @@ void Server::TOPIC()
 		int channel_id = get_channel_id(Client->split_command[1]);
 		if (channel_id >= 0)
 		{
+			Channel = &_Channels[channel_id];
 			if (Client->split_command.size() > 2)
 			{
-				if (_Channels[channel_id].is_user_on_channel(Client->fd))
+				if (Channel->is_user_on_channel(Client->fd))
 				{
-					if (_Channels[channel_id].is_user_operator(Client->fd))
+					if ((Channel->is_topic_moderated() && Channel->is_user_operator(Client->fd)) || !Channel->is_topic_moderated())
 					{
 						std::string topic;
 						for (int i = 2; i < Client->split_command.size(); i++)
 							topic += Client->split_command[i];
-						_Channels[channel_id].topic = topic;
-						send_message_to_channel(channel_id, Client->nickname + " " + Client->current_command);
+						Channel->topic = topic;
+						send_message_to_channel(Client->get_prefix() + " " + Client->current_command);
 					}
 					else
 						send_message(ERR_CHANOPRIVSNEEDED);
@@ -834,7 +841,7 @@ void Server::TOPIC()
 			else
 			{
 				Client->split_command[0] = Client->split_command[1];
-				if (_Channels[channel_id].topic == "")
+				if (Channel->topic == "")
 					send_message(RPL_NOTOPIC);
 				else
 					send_message(RPL_TOPIC);
