@@ -62,6 +62,8 @@ void Server::send_message(int fd, std::string numeric_reply)
 			int channel_id = get_channel_id(Client->split_command[0]);
 			message += Client->split_command[0] + " :" + _Channels[channel_id].topic;
 		}
+		else if (numeric_reply == RPL_UMODEIS)
+			message += "+" + Client->modes;
 		else if (numeric_reply == ERR_UNKNOWNCOMMAND)
 			message += Client->current_command + " :Unknown command";
 		else if (numeric_reply == ERR_NOTREGISTERED)
@@ -211,9 +213,9 @@ void Server::OPER()
 	{
 		int client_id = get_client_id(Client->split_command[1]);
 
-		if (client_id >= 0 && _Clients[client_id].mode.find('o') == std::string::npos)
+		if (client_id >= 0 && _Clients[client_id].modes.find('o') == std::string::npos)
 		{
-			_Clients[client_id].mode += 'o';
+			_Clients[client_id].modes += 'o';
 			send_message(_Clients[client_id].fd, RPL_YOUREOPER);
 		}
 	}
@@ -345,40 +347,43 @@ void	Server::MODE()
 			else
 				send_message(ERR_NOSUCHCHANNEL);
 		}
-	}
-	/*
-	else
-	{
-		int client_id = get_client_id(Client->split_command[1]);
-		if (client_id >= 0 && _Clients[client_id].fd == Client->fd)
+		else
 		{
-			char action = Client->split_command[2][0];
-			if (action == '+' || action == '-')
+			int client_id = get_client_id(Client->split_command[1]);
+			if (client_id >= 0 && _Clients[client_id].fd == Client->fd)
 			{
-				for (int i = 1; i < Client->split_command[2].size(); i++)
+				if (Client->split_command.size() == 2)
+					send_message(RPL_UMODEIS);
+				else
 				{
-					if (static_cast<std::string>(USER_MODES).find(Client->split_command[2][i]) != std::string::npos)
+					char action = Client->split_command[2][0];
+					if (action == '+' || action == '-')
 					{
-						if (action == '+' && Client->split_command[2][i] == 'i')
-							Client->mode += 'i';
-						else if (action == '-')
+						for (int i = 1; i < Client->split_command[2].size(); i++)
 						{
-							int pos = Client->mode.find(Client->split_command[2][i]);
-							if (pos != std::string::npos)
-								Client->mode.erase(Client->mode.begin() + pos);
+							if (static_cast<std::string>(USER_MODES).find(Client->split_command[2][i]) != std::string::npos)
+							{
+								if (action == '+' && Client->split_command[2][i] == 'i')
+									Client->modes += 'i';
+								else if (action == '-')
+								{
+									int pos = Client->modes.find(Client->split_command[2][i]);
+									if (pos != std::string::npos)
+										Client->modes.erase(Client->modes.begin() + pos);
+								}
+								if (Client->split_command[2][i] != 'o' || action != '+')
+									send_message(Client->get_prefix() + " MODE " + action + Client->split_command[2][i]);
+							}
+							else
+								send_message(ERR_UMODEUNKNOWNFLAG);
 						}
-						if (Client->split_command[2][i] != 'o' && action != '+')
-							send_message(Client->nickname + " MODE " + action + Client->split_command[2][i]);
 					}
-					else
-						send_message(ERR_UMODEUNKNOWNFLAG);
 				}
 			}
+			else
+				send_message(ERR_USERSDONTMATCH);
 		}
-		else
-			send_message(ERR_USERSDONTMATCH);
 	}
-	*/
 }
 
 void	Server::PRIVMSG()
@@ -389,31 +394,28 @@ void	Server::PRIVMSG()
 		send_message(ERR_NOTEXTTOSEND);
 	else
 	{
-		if (Client->split_command[2][0] == ':')
+		std::string prefix = Client->get_prefix() + " PRIVMSG ";
+
+		std::string text = Client->split_command[2];
+		for (int i = 3; i < Client->split_command.size(); i++)
+			text += " " + Client->split_command[i];
+
+		std::vector<std::string> split_receivers = string_split(Client->split_command[1], ',');
+		for (int i = 0; i < split_receivers.size(); i++)
 		{
-			std::string prefix = Client->get_prefix() + " PRIVMSG ";
-
-			std::string text = Client->split_command[2];
-			for (int i = 3; i < Client->split_command.size(); i++)
-				text += " " + Client->split_command[i];
-
-			std::vector<std::string> split_receivers = string_split(Client->split_command[1], ',');
-			for (int i = 0; i < split_receivers.size(); i++)
+			Client->split_command[1] = split_receivers[i];
+			std::string message = prefix + split_receivers[i] + " " + text;
+			if (split_receivers[i][0] == '#')
 			{
-				Client->split_command[1] = split_receivers[i];
-				std::string message = prefix + split_receivers[i] + " " + text;
-				if (split_receivers[i][0] == '#')
-				{
-					int channel_id = get_channel_id(split_receivers[i]);
-					if (channel_id >= 0)
-						send_message_to_channel(channel_id, message);
-				}
-				else
-				{
-					int client_fd = get_client_fd(split_receivers[i]);
-					if (client_fd >= 0)
-						send_message(client_fd, message);
-				}
+				int channel_id = get_channel_id(split_receivers[i]);
+				if (channel_id >= 0)
+					send_message_to_channel(channel_id, message);
+			}
+			else
+			{
+				int client_fd = get_client_fd(split_receivers[i]);
+				if (client_fd >= 0)
+					send_message(client_fd, message);
 			}
 		}
 	}
@@ -688,7 +690,7 @@ void Server::KICK(void)
 {
 	int channel_id = -1;
 	std::vector<std::string> param = Client->split_command;
-	std::size_t found = Client->mode.rfind("o");
+	std::size_t found = Client->modes.rfind("o");
 	if (found != std::string::npos)
 	{
 		send_message(ERR_CHANOPRIVSNEEDED);

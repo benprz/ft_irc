@@ -42,7 +42,7 @@ void	Server::printpfds() // debug
 		std::cout << "	nickname=" << _Clients[0].nickname << std::endl;
 		std::cout << "	username=" << _Clients[0].username << std::endl;
 		std::cout << "	realname=" << _Clients[0].realname << std::endl;
-		std::cout << "	mode=" << _Clients[0].mode << std::endl;
+		std::cout << "	mode=" << _Clients[0].modes << std::endl;
 		std::cout << "	opened_channels=" << _Clients[0].opened_channels << std::endl;
 		for (int i = 1; i < _Clients.size(); i++)
 		{
@@ -53,7 +53,7 @@ void	Server::printpfds() // debug
 			std::cout << "	nickname=" << _Clients[i].nickname << std::endl;
 			std::cout << "	username=" << _Clients[i].username << std::endl;
 			std::cout << "	realname=" << _Clients[i].realname << std::endl;
-			std::cout << "	mode=" << _Clients[i].mode << std::endl;
+			std::cout << "	mode=" << _Clients[i].modes << std::endl;
 			std::cout << "	opened_channels=" << _Clients[i].opened_channels << std::endl;
 		}
 	}

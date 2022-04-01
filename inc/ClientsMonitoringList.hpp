@@ -20,7 +20,7 @@ class ClientsMonitoringList
 		std::string username;
 		std::string realname;
 		std::string hostname;
-		std::string	mode;
+		std::string	modes;
 
 		int opened_channels;
 

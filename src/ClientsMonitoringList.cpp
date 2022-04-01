@@ -10,12 +10,12 @@ ClientsMonitoringList::ClientsMonitoringList(int fd)
 
 int	ClientsMonitoringList::is_operator()
 {
-	return (mode.find('o') != std::string::npos ? 1 : 0);
+	return (modes.find('o') != std::string::npos ? 1 : 0);
 }
 
 int	ClientsMonitoringList::is_invisible()
 {
-	return (mode.find('i') != std::string::npos ? 1 : 0);
+	return (modes.find('i') != std::string::npos ? 1 : 0);
 }
 		
 std::string	ClientsMonitoringList::get_prefix() 
