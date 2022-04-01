@@ -9,11 +9,11 @@ void Server::send_message(int fd, std::string numeric_reply)
 		message = numeric_reply;
 	else
 	{
-		message = static_cast<std::string>(":") + HOSTNAME + " " + numeric_reply + " ";
+		message = static_cast<std::string>(":") + HOSTNAME + " " + numeric_reply + " " + Client->nickname + " ";
 		if (numeric_reply == RPL_WELCOME)
 		{
 			Client->registered = 1;
-			message += Client->nickname + " :Welcome to the Internet Relay Network " + Client->nickname + "!" + Client->username + "@" + HOSTNAME;
+			message += ":Welcome to the Internet Relay Network " + Client->nickname + "!" + Client->username + "@" + HOSTNAME;
 		}
 		else if (numeric_reply == RPL_YOUREOPER)
 			message += ":You are now an IRC operator";
@@ -21,15 +21,24 @@ void Server::send_message(int fd, std::string numeric_reply)
 			message += Client->split_command[2] + " " + Client->split_command[1];
 		else if (numeric_reply == RPL_NAMREPLY)
 		{
-			int channel_id = get_channel_id(Client->split_command[0]);
-			message += Client->split_command[0] + " :";
-			for (int i = 0; i < _Channels[channel_id].users.size(); i++)
+			if (Client->split_command[0][0] == '*')
 			{
-				if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
+				message += " * * :" + _Clients[0].nickname;
+				for (int i = 1; i < _Clients.size(); i++)
+					message += " " + _Clients[i].nickname;
+			}
+			else
+			{
+				int channel_id = get_channel_id(Client->split_command[0]);
+				message += "= " + Client->split_command[0] + " :";
+				for (int i = 0; i < _Channels[channel_id].users.size(); i++)
 				{
-					if (_Channels[channel_id].is_user_operator(_Channels[channel_id].users[i]))
-						message += '@';
-					message += _Clients[get_client_id(_Channels[channel_id].users[i])].nickname + " ";
+					if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
+					{
+						if (_Channels[channel_id].is_user_operator(_Channels[channel_id].users[i]))
+							message += '@';
+						message += _Clients[get_client_id(_Channels[channel_id].users[i])].nickname + " ";
+					}
 				}
 			}
 		}
@@ -44,9 +53,7 @@ void Server::send_message(int fd, std::string numeric_reply)
 			else
 			{
 				int channel_id = get_channel_id(Client->split_command[0]);
-				message += Client->split_command[0];
-				if (_Channels[channel_id].topic != "")
-					message += " :" + _Channels[channel_id].topic;
+				message += Client->split_command[0] + " :" + _Channels[channel_id].topic;
 			}
 		}
 		else if (numeric_reply == RPL_LISTEND)
@@ -394,7 +401,7 @@ void	Server::add_client_to_chan(int channel_id)
 	std::cout << "yo\n";
 	_Channels[channel_id].add_user(Client->fd);
 	Client->opened_channels++;
-	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN " + _Channels[channel_id].name);
+	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN :" + _Channels[channel_id].name);
 	if (_Channels[channel_id].topic != "")
 		send_message(RPL_TOPIC);
 	send_message(RPL_NAMREPLY);
@@ -686,6 +693,8 @@ void Server::NAMES()
 		}
 		Client->split_command[0] = '*';
 	}
+	Client->split_command[0] = "*";
+	send_message(RPL_NAMREPLY);
 	send_message(RPL_ENDOFNAMES);
 }
 
