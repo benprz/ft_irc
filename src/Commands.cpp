@@ -35,6 +35,29 @@ void Server::send_message(int fd, std::string numeric_reply)
 		}
 		else if (numeric_reply == RPL_ENDOFNAMES)
 			message += Client->split_command[0] + " :End of /NAMES list";
+		else if (numeric_reply == RPL_LISTSTART)
+			message += "Channel :Users  Name";
+		else if (numeric_reply == RPL_LIST)
+		{
+			if (Client->split_command[0] == "Prv")
+				message += "Prv";
+			else
+			{
+				int channel_id = get_channel_id(Client->split_command[0]);
+				message += Client->split_command[0];
+				if (_Channels[channel_id].topic != "")
+					message += " :" + _Channels[channel_id].topic;
+			}
+		}
+		else if (numeric_reply == RPL_LISTEND)
+			message += ":End of /LIST";
+		else if (numeric_reply == RPL_NOTOPIC)
+			message += Client->split_command[0] + " :No topic is set";
+		else if (numeric_reply == RPL_TOPIC)
+		{
+			int channel_id = get_channel_id(Client->split_command[0]);
+			message += Client->split_command[0] + " :" + _Channels[channel_id].topic;
+		}
 		else if (numeric_reply == ERR_UNKNOWNCOMMAND)
 			message += Client->current_command + " :Unknown command";
 		else if (numeric_reply == ERR_NOTREGISTERED)
@@ -125,6 +148,8 @@ void Server::NICK()
 		{
 			if (get_client_id(Client->split_command[1]) == ERROR)
 			{
+				if (Client->registered)
+					send_message(get_current_client_prefix() + " NICK " + Client->split_command[1]);
 				Client->nickname = Client->split_command[1];
 				if (Client->logged && Client->username != "" && !Client->registered)
 					send_message(RPL_WELCOME);
@@ -306,6 +331,7 @@ void	Server::printchannels()
 			}
 			std::cout << "\n";
 			std::cout << "	users_limit=" << _Channels[i].users_limit << std::endl;
+			std::cout << "	topic=" << _Channels[i].topic << std::endl;
 			std::cout << "\n";
 		}
 	}
@@ -353,8 +379,14 @@ int	Server::get_channel_id(std::string channel)
 
 void	Server::send_message_to_channel(int channel_id, std::string message)
 {
-	for (int j = 0; j < _Channels[channel_id].users.size(); j++)
-		send_message(_Channels[channel_id].users[j], message);
+	if (!_Channels[channel_id].is_restricted_to_outsiders() || (_Channels[channel_id].is_restricted_to_outsiders() && _Channels[channel_id].is_user_on_channel(Client->fd)))
+	{
+		if (!_Channels[channel_id].is_moderated() || (_Channels[channel_id].is_moderated() && _Channels[channel_id].is_user_operator(Client->fd)))
+		{
+			for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+				send_message(_Channels[channel_id].users[j], message);
+		}
+	}
 }
 
 void	Server::add_client_to_chan(int channel_id)
@@ -363,6 +395,8 @@ void	Server::add_client_to_chan(int channel_id)
 	_Channels[channel_id].add_user(Client->fd);
 	Client->opened_channels++;
 	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN " + _Channels[channel_id].name);
+	if (_Channels[channel_id].topic != "")
+		send_message(RPL_TOPIC);
 	send_message(RPL_NAMREPLY);
 	send_message(RPL_ENDOFNAMES);
 	std::cout << "Added user fd=" << Client->fd << " to channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
@@ -587,10 +621,35 @@ void Server::QUIT(void)
 
 void Server::LIST()
 {
-	for (int i = 0; i < _Channels.size(); i++)
+	send_message(RPL_LISTSTART);
+	if (Client->split_command.size() == 1)
 	{
-		
+		for (int i = 0; i < _Channels.size(); i++)
+		{
+			if (_Channels[i].is_user_on_channel(Client->fd) || !_Channels[i].is_secret())
+			{
+				Client->split_command[0] = !_Channels[i].is_user_on_channel(Client->fd) && _Channels[i].is_private() ? "Prv" : _Channels[i].name;
+				send_message(RPL_LIST);	
+			}
+		}
 	}
+	else
+	{
+		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
+		int channel_id;
+		for (int i = 0; i < split_channels.size(); i++)
+		{
+			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
+			{
+				if (_Channels[channel_id].is_user_on_channel(Client->fd) || !_Channels[channel_id].is_secret())
+				{
+					Client->split_command[0] = !_Channels[channel_id].is_user_on_channel(Client->fd) && _Channels[channel_id].is_private() ? "Prv" : split_channels[i];
+					send_message(RPL_LIST);	
+				}
+			}
+		}
+	}
+	send_message(RPL_LISTEND);
 }
 
 void Server::NAMES()
@@ -630,6 +689,49 @@ void Server::NAMES()
 	send_message(RPL_ENDOFNAMES);
 }
 
+void Server::TOPIC()
+{
+	if (Client->split_command.size() < 2)
+		send_message(ERR_NEEDMOREPARAMS);
+	else
+	{
+		int channel_id = get_channel_id(Client->split_command[1]);
+		if (channel_id >= 0)
+		{
+			if (Client->split_command.size() > 2)
+			{
+				if (_Channels[channel_id].is_user_on_channel(Client->fd))
+				{
+					if (_Channels[channel_id].is_user_operator(Client->fd))
+					{
+						if (Client->split_command[2][0] == ':')
+						{
+							int pos = Client->current_command.find(':');
+							if (pos != std::string::npos)
+							{
+								_Channels[channel_id].topic = Client->current_command.substr(pos + 1);
+								send_message_to_channel(channel_id, Client->nickname + " TOPIC " + _Channels[channel_id].name + " :" + _Channels[channel_id].topic);
+							}
+						}
+					}
+					else
+						send_message(ERR_CHANOPRIVSNEEDED);
+				}
+				else
+					send_message(ERR_NOTONCHANNEL);
+			}
+			else
+			{
+				Client->split_command[0] = Client->split_command[1];
+				if (_Channels[channel_id].topic == "")
+					send_message(RPL_NOTOPIC);
+				else
+					send_message(RPL_TOPIC);
+			}
+		}
+	}
+}
+
 int Server::parse_command()
 {
 	std::string command = Client->split_command[0];
@@ -665,6 +767,12 @@ int Server::parse_command()
 				PRIVMSG();
 			else if (command == "NOTICE")
 				PRIVMSG();
+			else if (command == "LIST")
+				LIST();
+			else if (command == "TOPIC")
+				TOPIC();
+			else if (command == "PONG")
+				;
 			else
 				return (ERROR);
 		}

@@ -90,7 +90,6 @@ void	ChannelsList::add_user_to_invite_list(int client_fd)
 	invited_users.push_back(client_fd);
 }
 
-
 void	ChannelsList::remove_user_from_invite_list(int client_fd)
 {
 	 for (int i = 0; i < invited_users.size(); i++)

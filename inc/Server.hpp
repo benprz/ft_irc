@@ -102,6 +102,7 @@ class Server
 		void	NAMES();
 		void	PRIVMSG();
 		void	LIST();
+		void	TOPIC();
 };
 
 #endif
