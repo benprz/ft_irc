@@ -697,7 +697,7 @@ void Server::KICK(void)
 	int channel_id = -1;
 	std::vector<std::string> param = Client->split_command;
 	std::size_t found = Client->modes.rfind("o");
-	if (found != std::string::npos)
+	if (found == std::string::npos)
 	{
 		send_message(ERR_CHANOPRIVSNEEDED);
 		return;
@@ -707,13 +707,13 @@ void Server::KICK(void)
 		send_message(ERR_NEEDMOREPARAMS);
 		return;
 	}
-	channel_id = get_channel_id(param[0]);
+	channel_id = get_channel_id(param[1]);
 	if (channel_id == -1)
 	{
 		send_message(ERR_BADCHANMASK);
 		return;
 	}
-	int client_id = get_client_id(param[1]);
+	int client_id = get_client_id(param[2]);
 	int client_fd = _Clients[client_id].fd;
 	if (_Channels[channel_id].is_user_on_channel(client_fd))
 		_Channels[channel_id].remove_user(client_fd);
