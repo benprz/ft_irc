@@ -111,7 +111,8 @@ void Server::send_message(int fd, std::string numeric_reply)
 			message += ":No recipient given (" + Client->current_command + ")";
 		else if (numeric_reply == ERR_NOTEXTTOSEND)
 			message += ":No text to send";
-
+		else if (numeric_reply == ERR_USERNOTINCHANNEL)
+			message += Client->split_command[2] + Client->split_command[1] + " :They aren't on that channel";
 	}
 
 	message += CRLF;
@@ -692,35 +693,36 @@ void Server::KILL()
 	}
 }
 
-void Server::KICK(void)
+void Server::KICK()
 {
-	int channel_id = -1;
-	std::vector<std::string> param = Client->split_command;
-	std::size_t found = Client->modes.rfind("o");
-	if (found == std::string::npos)
-	{
-		send_message(ERR_CHANOPRIVSNEEDED);
-		return;
-	}
-	if (param.size() < 2)
-	{
+	if (Client->split_command.size() < 3)
 		send_message(ERR_NEEDMOREPARAMS);
-		return;
-	}
-	channel_id = get_channel_id(param[1]);
-	if (channel_id == -1)
-	{
-		send_message(ERR_BADCHANMASK);
-		return;
-	}
-	int client_id = get_client_id(param[2]);
-	int client_fd = _Clients[client_id].fd;
-	if (_Channels[channel_id].is_user_on_channel(client_fd))
-		_Channels[channel_id].remove_user(client_fd);
 	else
-		send_message(ERR_NOTONCHANNEL);
-	if (param.size() == 3)
-		std::cout << param[2] << std::endl;
+	{
+		int channel_id = get_channel_id(Client->split_command[1]);
+		Channel = &_Channels[channel_id];
+		if (channel_id >= 0)
+		{
+			int client_id = get_client_id(Client->split_command[2]);
+			if (client_id >= 0)
+			{
+				if (Channel->is_user_on_channel(Client->fd))
+				{
+					if (Channel->is_user_operator(Client->fd))
+					{
+						send_message_to_channel(Client->get_prefix() + " KICK " + Channel->name + " " + _Clients[client_id].nickname + " :no reason given");
+						Channel->remove_user(_Clients[client_id].fd);
+					}
+					else
+						send_message(ERR_CHANOPRIVSNEEDED);
+				}
+				else
+					send_message(ERR_NOTONCHANNEL);
+			}
+		}
+		else
+			send_message(ERR_NOSUCHCHANNEL);
+	}
 }
 
 void Server::QUIT(void)
