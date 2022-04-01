@@ -164,7 +164,7 @@ void Server::NICK()
 			if (get_client_id(Client->split_command[1]) == ERROR)
 			{
 				if (Client->registered)
-					send_message(Client->get_prefix() + " NICK " + Client->split_command[1]);
+					send_message_to_client_channels(Client->get_prefix() + " NICK " + Client->split_command[1]);
 				Client->nickname = Client->split_command[1];
 				if (Client->logged && Client->username != "" && !Client->registered)
 					send_message(RPL_WELCOME);
@@ -509,6 +509,18 @@ void	Server::send_message_to_channel(std::string message)
 	send_message_to_channel(get_channel_id(Channel->name), message);
 }
 
+void	Server::send_message_to_client_channels(std::string message)
+{
+	for (int i = 0; i < _Channels.size(); i++)
+	{
+		if (_Channels[i].is_user_on_channel(Client->fd))
+		{
+			std::cout << message << " " << _Channels[i].name << std::endl;
+			send_message_to_channel(i, message);
+		}
+	}
+}
+
 void	Server::add_client_to_chan(int channel_id)
 {
 	_Channels[channel_id].add_user(Client->fd);
@@ -829,8 +841,14 @@ void Server::TOPIC()
 					if ((Channel->is_topic_moderated() && Channel->is_user_operator(Client->fd)) || !Channel->is_topic_moderated())
 					{
 						std::string topic;
+						if (Client->split_command[2][0] == ':')
+							Client->split_command[2].erase(Client->split_command[2].begin());
 						for (int i = 2; i < Client->split_command.size(); i++)
+						{
 							topic += Client->split_command[i];
+							if (i < Client->split_command.size() - 1)
+								topic += " ";
+						}
 						Channel->topic = topic;
 						send_message_to_channel(Client->get_prefix() + " " + Client->current_command);
 					}

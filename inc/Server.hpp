@@ -82,6 +82,7 @@ class Server
 		void send_message(int fd, std::string numeric_reply);
 		void send_message_to_channel(int channel_id, std::string message);
 		void send_message_to_channel(std::string message);
+		void send_message_to_client_channels(std::string message);
 
 		int		get_pfd_id(int fd);
 		int		get_channel_id(std::string channel);
