@@ -709,6 +709,10 @@ void Server::KICK(void)
 	int client_fd = _Clients[client_id].fd;
 	if (_Channels[channel_id].is_user_on_channel(client_fd))
 		_Channels[channel_id].remove_user(client_fd);
+	else
+		send_message(ERR_NOTONCHANNEL);
+	if (param.size() == 3)
+		std::cout << param[2] << std::endl;
 }
 
 void Server::QUIT(void)
