@@ -55,6 +55,7 @@ class Server
 		nfds_t					nfds;
 		nfds_t					current_pfd;
 		ClientsMonitoringList	*Client;
+		ChannelsList			*Channel;
 
 		Server(int const port, std::string const password);
 		Server(Server const &instance);
@@ -77,8 +78,8 @@ class Server
 		void send_message(std::string error);
 		void send_message(int fd, std::string numeric_reply);
 		void send_message_to_channel(int channel_id, std::string message);
+		void send_message_to_channel(std::string message);
 
-		std::string	get_current_client_prefix() { return (Client->nickname + "!" + Client->username + "@" + HOSTNAME); };
 		int			get_pfd_id(int fd);
 		int			get_channel_id(std::string channel);
 		int			get_client_id(std::string nick);
@@ -87,6 +88,8 @@ class Server
 		void		add_client_to_chan(int channel_id);
 		void		remove_client_from_chan(int channel_id, std::string reason);
 		int 		count_visible_users_on_channel(int channel_id);
+		void		edit_channel_modes();
+		int			add_or_remove_special_mode_channel(char action, char mode, std::string param);
 
 		// commands
 		void	PASS();

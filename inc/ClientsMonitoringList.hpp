@@ -25,8 +25,11 @@ class ClientsMonitoringList
 		int opened_channels;
 
 		ClientsMonitoringList(int fd);
+		std::string get_prefix();
 		int	is_operator();
 		int	is_invisible();
 };
+
+#include "Server.hpp"
 
 #endif

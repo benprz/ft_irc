@@ -23,7 +23,7 @@ void Server::send_message(int fd, std::string numeric_reply)
 		{
 			if (Client->split_command[0][0] == '*')
 			{
-				message += " * * :" + _Clients[0].nickname;
+				message += "* * :" + _Clients[0].nickname;
 				for (int i = 1; i < _Clients.size(); i++)
 					message += " " + _Clients[i].nickname;
 			}
@@ -48,16 +48,13 @@ void Server::send_message(int fd, std::string numeric_reply)
 			message += "Channel :Users  Name";
 		else if (numeric_reply == RPL_LIST)
 		{
-			if (Client->split_command[0] == "Prv")
-				message += "Prv";
-			else
-			{
-				int channel_id = get_channel_id(Client->split_command[0]);
-				message += Client->split_command[0] + " " + std::to_string(count_visible_users_on_channel(channel_id)) + " :" + _Channels[channel_id].topic;
-			}
+			int channel_id = get_channel_id(Client->split_command[0]);
+			message += Client->split_command[0] + " " + std::to_string(count_visible_users_on_channel(channel_id)) + " :" + _Channels[channel_id].topic;
 		}
 		else if (numeric_reply == RPL_LISTEND)
 			message += ":End of /LIST";
+		else if (numeric_reply == RPL_CHANNELMODEIS)
+			message += Channel->name + " +" + Channel->modes;
 		else if (numeric_reply == RPL_NOTOPIC)
 			message += Client->split_command[0] + " :No topic is set";
 		else if (numeric_reply == RPL_TOPIC)
@@ -167,7 +164,7 @@ void Server::NICK()
 			if (get_client_id(Client->split_command[1]) == ERROR)
 			{
 				if (Client->registered)
-					send_message(get_current_client_prefix() + " NICK " + Client->split_command[1]);
+					send_message(Client->get_prefix() + " NICK " + Client->split_command[1]);
 				Client->nickname = Client->split_command[1];
 				if (Client->logged && Client->username != "" && !Client->registered)
 					send_message(RPL_WELCOME);
@@ -202,7 +199,6 @@ void Server::USER()
 	}
 }
 
-// faut mettre le mode au bon nickname, pas à celui qui lance la commande
 void Server::OPER()
 {
 	if (OPER_HOST == 0)
@@ -223,37 +219,134 @@ void Server::OPER()
 	}
 }
 
-void	Server::MODE()
+int	Server::add_or_remove_special_mode_channel(char action, char mode, std::string param)
 {
-	if (Client->split_command.size() < 3)
-		send_message(ERR_NEEDMOREPARAMS);
-	else if (Client->split_command[1][0] == '#')
+	std::string ret;
+
+	if (mode == 'o')
 	{
-		int channel_id = get_channel_id(Client->split_command[1]);
-		if (channel_id >= 0)
+		int client_fd = get_client_fd(param);
+		if (client_fd >= 0)
 		{
-			if (_Channels[channel_id].is_user_operator(Client->fd))
-			{
-				char action = Client->split_command[2][0];
-				if (action == '+' || action == '-')
-				{
-					std::string	err;
-					std::string third_param = Client->split_command.size() > 3 ? Client->split_command[3] : "";
-					for (int i = 1; i < Client->split_command[2].size(); i++)
-					{
-						Client->split_command[2][0] = Client->split_command[2][i];
-						if ((err = _Channels[channel_id].add_or_remove_mode(action, Client->split_command[2][i], third_param, *this)) != "")
-							send_message(err);
-					}
-					printchannels();
-				}
-			}
+			if (action == '+')
+				ret = Channel->add_operator(client_fd);
 			else
-				send_message(ERR_CHANOPRIVSNEEDED);
+				ret = Channel->remove_operator(client_fd);
 		}
 		else
-			send_message(ERR_NOSUCHCHANNEL);
+			return (ERROR);
 	}
+	else if (mode == 'l')
+	{
+		if (action == '+')
+		{
+			for (int i = 0; i < param.size(); i++)
+			{
+				if (!std::isdigit(param[i]))
+					return (ERROR);
+			}
+			Channel->users_limit = std::stoi(param);
+			Channel->add_mode(mode);
+			ret = "+l";
+		}
+		else
+			ret = Channel->remove_mode(mode);
+	}
+	else if (mode == 'k')
+	{
+		if (action == '+')
+		{
+			Channel->key = param;
+			Channel->add_mode(mode);
+			ret = "+k";
+		}
+		else
+			ret = Channel->remove_mode(mode);
+	}
+	if (ret != "")
+		return (1);
+	return (0);
+}
+
+void	Server::edit_channel_modes()
+{
+	if (Channel->is_user_operator(Client->fd))
+	{
+		char action = '+';
+		char mode = 0;
+		std::string edited_modes;
+		int current_param = 3;
+		std::string params_list;
+		int ret;
+		for (int i = 0; i < Client->split_command[2].size(); i++)
+		{
+			if (Client->split_command[2][i] == '+' || Client->split_command[2][i] == '-')
+			{
+				action = Client->split_command[2][i];
+				continue ;
+			}
+			if (action == '+' || action == '-')
+			{
+				Client->split_command[2][0] = Client->split_command[2][i];
+				mode = Client->split_command[2][i];
+				if (!Channel->is_mode(mode))
+					send_message(ERR_UNKNOWNMODE);
+				else
+				{
+					if (mode == 'o' || mode == 'l' || mode == 'k')
+					{
+						if ((action == '+' && Client->split_command.size() < current_param) || \
+							(ret = add_or_remove_special_mode_channel(action, mode, Client->split_command[current_param])) == ERROR)
+							break ;
+						else if (ret == 0)
+							continue ;
+						else if (action == '+')
+							edited_modes += static_cast<std::string>("+") + mode;
+						else
+							edited_modes += static_cast<std::string>("-") + mode;
+						if (mode == 'o' || action == '+')
+						{
+							params_list += " " + Client->split_command[current_param];
+						}
+						current_param++;
+					}
+					else if (action == '+')
+						edited_modes += Channel->add_mode(mode);
+					else
+						edited_modes += Channel->remove_mode(mode);
+				}
+			}
+		}
+		if (edited_modes.size())
+			send_message_to_channel(Client->get_prefix() + " MODE " + Channel->name + " " + edited_modes + params_list);
+		printchannels();
+	}
+	else
+		send_message(ERR_CHANOPRIVSNEEDED);
+}
+
+void	Server::MODE()
+{
+	if (Client->split_command.size() == 1)
+		send_message(ERR_NEEDMOREPARAMS);
+	else if (Client->split_command.size() >= 2)
+	{
+		if (Client->split_command[1][0] == '#')
+		{
+			int channel_id = get_channel_id(Client->split_command[1]);
+			if (channel_id >= 0)
+			{
+				Channel = &_Channels[channel_id];
+				if (Client->split_command.size() == 2)
+					send_message(RPL_CHANNELMODEIS);
+				else
+					edit_channel_modes();
+			}
+			else
+				send_message(ERR_NOSUCHCHANNEL);
+		}
+	}
+	/*
 	else
 	{
 		int client_id = get_client_id(Client->split_command[1]);
@@ -285,6 +378,7 @@ void	Server::MODE()
 		else
 			send_message(ERR_USERSDONTMATCH);
 	}
+	*/
 }
 
 void	Server::PRIVMSG()
@@ -297,7 +391,7 @@ void	Server::PRIVMSG()
 	{
 		if (Client->split_command[2][0] == ':')
 		{
-			std::string prefix = get_current_client_prefix() + " PRIVMSG ";
+			std::string prefix = Client->get_prefix() + " PRIVMSG ";
 
 			std::string text = Client->split_command[2];
 			for (int i = 3; i < Client->split_command.size(); i++)
@@ -335,7 +429,7 @@ void	Server::printchannels()
 			std::cout << "_Channels[" << i << "]" << std::endl;
 			std::cout << "	name=" << _Channels[i].name << std::endl;
 			std::cout << "	key=" << _Channels[i].key << std::endl;
-			std::cout << "	mode=" << _Channels[i].mode << std::endl;
+			std::cout << "	mode=" << _Channels[i].modes << std::endl;
 			std::cout << "	users=";
 			for (int j = 0; j < _Channels[i].users.size(); j++)
 			{
@@ -407,12 +501,16 @@ void	Server::send_message_to_channel(int channel_id, std::string message)
 	}
 }
 
+void	Server::send_message_to_channel(std::string message)
+{
+	send_message_to_channel(get_channel_id(Channel->name), message);
+}
+
 void	Server::add_client_to_chan(int channel_id)
 {
-	std::cout << "yo\n";
 	_Channels[channel_id].add_user(Client->fd);
 	Client->opened_channels++;
-	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " JOIN :" + _Channels[channel_id].name);
+	send_message_to_channel(channel_id, Client->get_prefix() + " JOIN :" + _Channels[channel_id].name);
 	if (_Channels[channel_id].topic != "")
 		send_message(RPL_TOPIC);
 	send_message(RPL_NAMREPLY);
@@ -423,7 +521,7 @@ void	Server::add_client_to_chan(int channel_id)
 
 void	Server::remove_client_from_chan(int channel_id, std::string reason)
 {
-	send_message_to_channel(channel_id, ":" + get_current_client_prefix() + " PART " + _Channels[channel_id].name + reason);
+	send_message_to_channel(channel_id, ":" + Client->get_prefix() + " PART " + _Channels[channel_id].name + reason);
 	_Channels[channel_id].remove_user(Client->fd);
 	Client->opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
@@ -542,21 +640,12 @@ void	Server::JOIN()
 				{
 					std::string err;
 
-					if (_Channels[channel_id].is_limited())
-					{
-						if (_Channels[channel_id].is_users_limit_reached())
-							err = ERR_CHANNELISFULL;
-					}
-					else if (_Channels[channel_id].is_invite_only())
-					{
-						if (!_Channels[channel_id].is_user_invited(Client->fd))
-							err = ERR_INVITEONLYCHAN;
-					}
-					else if (_Channels[channel_id].is_restricted_by_key())
-					{
-						if (i >= split_keys.size() || _Channels[channel_id].key != split_keys[i])
-							err = ERR_BADCHANNELKEY;
-					}
+					if (_Channels[channel_id].is_limited() && _Channels[channel_id].is_users_limit_reached())
+						err = ERR_CHANNELISFULL;
+					else if (_Channels[channel_id].is_invite_only() && !_Channels[channel_id].is_user_invited(Client->fd))
+						err = ERR_INVITEONLYCHAN;
+					else if (_Channels[channel_id].is_restricted_by_key() && (i >= split_keys.size() || _Channels[channel_id].key != split_keys[i]))
+						err = ERR_BADCHANNELKEY;
 					if (err != "")
 					{
 						send_message(err);
@@ -646,7 +735,7 @@ void Server::LIST()
 		{
 			if (_Channels[i].is_user_on_channel(Client->fd) || !_Channels[i].is_secret())
 			{
-				Client->split_command[0] = !_Channels[i].is_user_on_channel(Client->fd) && _Channels[i].is_private() ? "Prv" : _Channels[i].name;
+				Client->split_command[0] = _Channels[i].name;
 				send_message(RPL_LIST);	
 			}
 		}
@@ -661,7 +750,7 @@ void Server::LIST()
 			{
 				if (_Channels[channel_id].is_user_on_channel(Client->fd) || !_Channels[channel_id].is_secret())
 				{
-					Client->split_command[0] = !_Channels[channel_id].is_user_on_channel(Client->fd) && _Channels[channel_id].is_private() ? "Prv" : split_channels[i];
+					Client->split_command[0] = split_channels[i];
 					send_message(RPL_LIST);	
 				}
 			}
@@ -681,7 +770,7 @@ void Server::NAMES()
 		{
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
-				if (_Channels[channel_id].is_secret() == 0 && _Channels[channel_id].is_private() == 0)
+				if (_Channels[channel_id].is_secret() == 0)
 				{
 					Client->split_command[0] = split_channels[i];
 					send_message(RPL_NAMREPLY);
@@ -696,7 +785,7 @@ void Server::NAMES()
 	{
 		for (int i = 0; i < _Channels.size(); i++)
 		{
-			if (_Channels[i].is_secret() == 0 && _Channels[i].is_private() == 0)
+			if (_Channels[i].is_secret() == 0)
 			{
 				Client->split_command[0] = _Channels[i].name;
 				send_message(RPL_NAMREPLY);
@@ -728,7 +817,7 @@ void Server::TOPIC()
 						for (int i = 2; i < Client->split_command.size(); i++)
 							topic += Client->split_command[i];
 						_Channels[channel_id].topic = topic;
-						send_message_to_channel(channel_id, Client->nickname + " TOPIC " + _Channels[channel_id].name + " :" + _Channels[channel_id].topic);
+						send_message_to_channel(channel_id, Client->nickname + " " + Client->current_command);
 					}
 					else
 						send_message(ERR_CHANOPRIVSNEEDED);

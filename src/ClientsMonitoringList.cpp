@@ -17,3 +17,8 @@ int	ClientsMonitoringList::is_invisible()
 {
 	return (mode.find('i') != std::string::npos ? 1 : 0);
 }
+		
+std::string	ClientsMonitoringList::get_prefix() 
+{ 
+	return (":" + nickname + "!" + username + "@" + HOSTNAME);
+};

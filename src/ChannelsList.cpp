@@ -3,7 +3,6 @@
 ChannelsList::ChannelsList(std::string name)
 {
 	this->name = name;
-	mode += 'n';
 	users_limit = 0;
 }
 
@@ -26,24 +25,39 @@ void	ChannelsList::remove_user(int client_fd)
 	}
 }
 
-void	ChannelsList::add_operator(int client_fd)
+std::string	ChannelsList::add_operator(int client_fd)
 {
 	if (!is_user_operator(client_fd))
+	{
 		operators.push_back(client_fd);
+		return (static_cast<std::string>("+") + 'o');
+	}
+	return "";
 }
 
-void	ChannelsList::remove_operator(int client_fd)
+std::string	ChannelsList::remove_operator(int client_fd)
 {
 	for (int i = 0; i < operators.size(); i++)
 	{
 		if (operators[i] == client_fd)
+		{
 			operators.erase(operators.begin() + i);
+			return (static_cast<std::string>("-") + 'o');
+		}
 	}
+	return "";
+}
+
+int		ChannelsList::is_mode(char mode)
+{
+	if (static_cast<std::string>(CHANNEL_MODES).find(mode) != std::string::npos)
+		return (1);
+	return (0);
 }
 
 int		ChannelsList::has_mode(char mode)
 {
-	if (this->mode.find(mode) != std::string::npos)
+	if (this->modes.find(mode) != std::string::npos)
 		return (1);
 	return (0);
 }
@@ -105,74 +119,25 @@ void	ChannelsList::remove_user_from_invite_list(int client_fd)
 void ChannelsList::set_key(std::string key)
 {
 	this->key = key;
-	mode += 'k';
+	modes += 'k';
 }
 
-std::string	ChannelsList::add_or_remove_mode(char action, char mode, std::string third_param, Server &serv)
+std::string	ChannelsList::add_mode(char mode)
 {
-	std::cout << "action=" << action << " mode=" << mode << std::endl;
-
-	if (static_cast<std::string>(CHANNEL_MODES).find(mode) == std::string::npos)
-		return (ERR_UNKNOWNMODE);
-	else
+	if (!has_mode(mode))
 	{
-		int mode_pos = this->mode.find(mode);
-
-		if (mode == 'o')
-		{
-			int client_fd = serv.get_client_fd(third_param);
-			if (client_fd >= 0)
-			{
-				if (action == '+')
-					add_operator(client_fd);
-				else
-					remove_operator(client_fd);
-			}
-		}
-		else if (mode == 'l')
-		{
-			if (action == '+')
-			{
-				if (!is_limited() && third_param != "")
-				{
-					for (int i = 0; i < third_param.size(); i++)
-					{
-						if (!std::isdigit(third_param[i]))
-							return "";
-					}
-					users_limit = std::stoi(third_param);
-					this->mode += 'l';
-				}
-			}
-			else if (is_limited())
-				this->mode[mode_pos] = ' ';
-		}
-		else if (mode == 'k')
-		{
-			if (action == '+')
-			{
-				if (is_restricted_by_key())
-					return (ERR_KEYSET);
-				else if (third_param == "")
-					return (ERR_NEEDMOREPARAMS);
-				else
-					set_key(third_param);
-			}
-			else if (is_restricted_by_key())
-				this->mode[mode_pos] = ' ';
-		}
-		else
-		{
-			if (action == '+')
-			{
-				if (!has_mode(mode))
-					this->mode += mode;
-			}
-			else if (has_mode(mode))
-				this->mode[mode_pos] = ' ';
-		}
-
+		this->modes += mode;
+		return (static_cast<std::string>("+") + mode);
 	}
-	this->mode.erase(std::remove_if(this->mode.begin(), this->mode.end(), ::isspace));
-	return ("");
+	return "";
+}
+
+std::string	ChannelsList::remove_mode(char mode)
+{
+	if (has_mode(mode))
+	{
+		this->modes.erase(this->modes.begin() + this->modes.find(mode));
+		return (static_cast<std::string>("-") + mode);
+	}
+	return "";
 }
