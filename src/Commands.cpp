@@ -529,8 +529,11 @@ void	Server::add_client_to_chan(int channel_id)
 	send_message_to_channel(channel_id, Client->get_prefix() + " JOIN :" + _Channels[channel_id].name);
 	if (_Channels[channel_id].topic != "")
 		send_message(RPL_TOPIC);
-	send_message(RPL_NAMREPLY);
-	send_message(RPL_ENDOFNAMES);
+	for (int i = 0; i < _Channels[channel_id].users.size(); i++)
+	{
+		send_message(_Channels[channel_id].users[i], RPL_NAMREPLY);
+		send_message(_Channels[channel_id].users[i], RPL_ENDOFNAMES);
+	}
 	std::cout << "Added user fd=" << Client->fd << " to channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
 	printchannels();
 }
