@@ -529,11 +529,8 @@ void	Server::add_client_to_chan(int channel_id)
 	send_message_to_channel(channel_id, Client->get_prefix() + " JOIN :" + _Channels[channel_id].name);
 	if (_Channels[channel_id].topic != "")
 		send_message(RPL_TOPIC);
-	for (int i = 0; i < _Channels[channel_id].users.size(); i++)
-	{
-		send_message(_Channels[channel_id].users[i], RPL_NAMREPLY);
-		send_message(_Channels[channel_id].users[i], RPL_ENDOFNAMES);
-	}
+	send_message(RPL_NAMREPLY);
+	send_message(RPL_ENDOFNAMES);
 	std::cout << "Added user fd=" << Client->fd << " to channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
 	printchannels();
 }
@@ -542,6 +539,7 @@ void	Server::remove_client_from_chan(int channel_id, int client_id, std::string 
 {
 	send_message_to_channel(channel_id, _Clients[client_id].get_prefix() + " PART " + _Channels[channel_id].name + reason);
 	_Channels[channel_id].remove_user(_Clients[client_id].fd);
+	_Channels[channel_id].remove_operator(_Clients[client_id].fd);
 	_Clients[client_id].opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
 		_Channels.erase(_Channels.begin() + channel_id);
