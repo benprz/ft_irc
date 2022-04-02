@@ -181,7 +181,7 @@ void Server::USER()
 {
 	if (Client->registered)
 		send_message(ERR_ALREADYREGISTRED);
-	else if (Client->split_command.size() < 4)
+	else if (Client->split_command.size() < 5)
 		send_message(ERR_NEEDMOREPARAMS);
 	else
 	{
@@ -192,7 +192,8 @@ void Server::USER()
 			Client->split_command[4] += " ";
 			Client->split_command[4] += Client->split_command[i];
 		}
-		Client->split_command[4].erase(0, 1);
+		if (Client->split_command[4][0] == ':')
+			Client->split_command[4].erase(0, 1);
 		Client->realname = Client->split_command[4];
 		if (Client->logged && Client->nickname != "")
 			send_message(RPL_WELCOME);
