@@ -70,7 +70,7 @@ class Server
 		void remove_client_from_all_chans(int client_fd);
 		void remove_client_from_all_chans();
 		void add_client_to_chan(int channel_id);
-		void remove_client_from_chan(int channel_id, std::string reason);
+		void remove_client_from_chan(int channel_id, int client_id, std::string reason);
 		void remove_client_from_chan(std::string reason);
 		void printpfds(); // debug
 		void printchannels(); //debug

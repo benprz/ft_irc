@@ -535,11 +535,11 @@ void	Server::add_client_to_chan(int channel_id)
 	printchannels();
 }
 
-void	Server::remove_client_from_chan(int channel_id, std::string reason)
+void	Server::remove_client_from_chan(int channel_id, int client_id, std::string reason)
 {
-	send_message_to_channel(channel_id, Client->get_prefix() + " PART " + _Channels[channel_id].name + reason);
+	send_message_to_channel(channel_id, _Clients[client_id].get_prefix() + " PART " + _Channels[channel_id].name + reason);
 	_Channels[channel_id].remove_user(Client->fd);
-	Client->opened_channels--;
+	_Clients[client_id].opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
 		_Channels.erase(_Channels.begin() + channel_id);
 	std::cout << "Removed user fd=" << Client->fd << " from channel name=" << _Channels[channel_id].name << " chanid=" << channel_id << std::endl;
@@ -548,7 +548,7 @@ void	Server::remove_client_from_chan(int channel_id, std::string reason)
 
 void	Server::remove_client_from_chan(std::string reason)
 {
-	remove_client_from_chan(get_channel_id(Channel->name), reason);
+	remove_client_from_chan(get_channel_id(Channel->name), get_client_id(Client->fd), reason);
 }
 
 void	Server::INVITE()
