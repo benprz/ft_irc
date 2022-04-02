@@ -443,6 +443,11 @@ void	Server::printchannels()
 				std::cout << _Channels[i].operators[j] << " ";
 			}
 			std::cout << "\n";
+			std::cout << "	invited_users=";
+			for (int j = 0; j < _Channels[i].invited_users.size(); j++)
+			{
+				std::cout << _Channels[i].invited_users[j] << " ";
+			}
 			std::cout << "	users_limit=" << _Channels[i].users_limit << std::endl;
 			std::cout << "	topic=" << _Channels[i].topic << std::endl;
 			std::cout << "\n";
