@@ -700,7 +700,7 @@ void Server::KILL()
 	{
 		int client_id = get_client_id(Client->split_command[1]);
 		if (client_id >= 0)
-			remove_client(client_id);
+			remove_client(_Clients[client_id].fd);
 		else
 			send_message(ERR_NOSUCHNICK);
 	}
