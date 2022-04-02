@@ -21,7 +21,10 @@ void	ChannelsList::remove_user(int client_fd)
 	for (int i = 0; i < users.size(); i++)
 	{
 		if (users[i] == client_fd)
+		{
 			users.erase(users.begin() + i);
+			remove_operator(client_fd);
+		}
 	}
 }
 
@@ -41,7 +44,6 @@ std::string	ChannelsList::remove_operator(int client_fd)
 	{
 		if (operators[i] == client_fd)
 		{
-			std::cout << "JE REMOVE NICOOOOOOO\n";
 			operators.erase(operators.begin() + i);
 			return (static_cast<std::string>("-") + 'o');
 		}
