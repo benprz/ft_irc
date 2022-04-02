@@ -538,6 +538,7 @@ void	Server::add_client_to_chan(int channel_id)
 void	Server::remove_client_from_chan(int channel_id, int client_id, std::string reason)
 {
 	_Channels[channel_id].remove_user(_Clients[client_id].fd);
+	std::cout << "NICO PU OP !!!!!!!!!!!!!!\n";
 	_Channels[channel_id].remove_operator(_Clients[client_id].fd);
 	send_message_to_channel(channel_id, _Clients[client_id].get_prefix() + " PART " + _Channels[channel_id].name + reason);
 	_Clients[client_id].opened_channels--;
@@ -701,10 +702,7 @@ void Server::KILL()
 	{
 		int client_id = get_client_id(Client->split_command[1]);
 		if (client_id >= 0)
-		{
-			std::cout << "LE CLIENT QUI VA MOURIR EST " << _Clients[client_id].nickname << std::endl;
 			remove_client(_Clients[client_id].fd);
-		}
 		else
 			send_message(ERR_NOSUCHNICK);
 	}
