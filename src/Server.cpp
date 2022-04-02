@@ -193,7 +193,7 @@ void    Server::remove_client(int fd)
 
 	if (pfd_id >= 0 && client_id >= 0)
 	{
-		remove_client_from_all_chans(_Clients[client_id].fd);
+		remove_client_from_all_chans(fd);
 		_Clients.erase(_Clients.begin() + client_id);
 
 		close(pfds[pfd_id].fd);

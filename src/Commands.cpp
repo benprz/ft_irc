@@ -538,7 +538,7 @@ void	Server::add_client_to_chan(int channel_id)
 void	Server::remove_client_from_chan(int channel_id, int client_id, std::string reason)
 {
 	send_message_to_channel(channel_id, _Clients[client_id].get_prefix() + " PART " + _Channels[channel_id].name + reason);
-	_Channels[channel_id].remove_user(Client->fd);
+	_Channels[channel_id].remove_user(_Clients[client_id].fd);
 	_Clients[client_id].opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
 		_Channels.erase(_Channels.begin() + channel_id);
