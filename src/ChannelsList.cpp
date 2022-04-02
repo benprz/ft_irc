@@ -41,6 +41,7 @@ std::string	ChannelsList::remove_operator(int client_fd)
 	{
 		if (operators[i] == client_fd)
 		{
+			std::cout << "JE REMOVE NICOOOOOOO\n";
 			operators.erase(operators.begin() + i);
 			return (static_cast<std::string>("-") + 'o');
 		}
