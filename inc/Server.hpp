@@ -28,7 +28,7 @@
 #define MAX_ALLOWED_CLIENTS 100
 #define MAX_ALLOWED_CHANNELS_PER_CLIENT 10
 #define OPER_HOST 1
-#define OPER_PASSWD "oper123"
+#define OPER_PASSWD "o"
 
 #define USER_MODES "io" // "iswo" mais s et w ne sont pas utilisés
 #define NICK_CHARSET "AZERTYUIOPQSDFGHJKLMWXCVBNazertyuiopqsdfghjklmwxcvbn1234567890[]\\`_^{}|"

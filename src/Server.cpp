@@ -167,7 +167,7 @@ void	Server::remove_client_from_all_chans(int client_fd)
 	for (int i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].is_user_on_channel(client_fd))
-			remove_client_from_chan(client_fd, i, "");
+			remove_client_from_chan(i, get_client_id(client_fd), "");
 	}
 }
 

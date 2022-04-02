@@ -700,7 +700,10 @@ void Server::KILL()
 	{
 		int client_id = get_client_id(Client->split_command[1]);
 		if (client_id >= 0)
+		{
+			std::cout << "LE CLIENT QUI VA MOURIR EST " << _Clients[client_id].nickname << std::endl;
 			remove_client(_Clients[client_id].fd);
+		}
 		else
 			send_message(ERR_NOSUCHNICK);
 	}
