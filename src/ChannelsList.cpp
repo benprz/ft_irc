@@ -18,7 +18,7 @@ void	ChannelsList::add_user(int client_fd)
 
 void	ChannelsList::remove_user(int client_fd)
 {
-	for (int i = 0; i < users.size(); i++)
+	for (size_t i = 0; i < users.size(); i++)
 	{
 		if (users[i] == client_fd)
 		{
@@ -40,7 +40,7 @@ std::string	ChannelsList::add_operator(int client_fd)
 
 std::string	ChannelsList::remove_operator(int client_fd)
 {
-	for (int i = 0; i < operators.size(); i++)
+	for (size_t i = 0; i < operators.size(); i++)
 	{
 		if (operators[i] == client_fd)
 		{
@@ -67,7 +67,7 @@ int		ChannelsList::has_mode(char mode)
 
 int ChannelsList::is_user_invited(int client_fd)
 {
-	for (int i = 0; i < invited_users.size(); i++)
+	for (size_t i = 0; i < invited_users.size(); i++)
 	{
 		if (invited_users[i] == client_fd)
 			return (1);
@@ -77,7 +77,7 @@ int ChannelsList::is_user_invited(int client_fd)
 
 int	ChannelsList::is_user_on_channel(int client_fd)
 {
-	for (int i = 0; i < users.size(); i++)
+	for (size_t i = 0; i < users.size(); i++)
 	{
 		if (users[i] == client_fd)
 			return (1);
@@ -87,7 +87,7 @@ int	ChannelsList::is_user_on_channel(int client_fd)
 
 int	ChannelsList::is_user_operator(int client_fd)
 {
-	for (int i = 0; i < operators.size(); i++)
+	for (size_t i = 0; i < operators.size(); i++)
 	{
 		if (operators[i] == client_fd)
 			return (1);
@@ -109,7 +109,7 @@ void	ChannelsList::add_user_to_invite_list(int client_fd)
 
 void	ChannelsList::remove_user_from_invite_list(int client_fd)
 {
-	 for (int i = 0; i < invited_users.size(); i++)
+	 for (size_t i = 0; i < invited_users.size(); i++)
 	 {
 		 if (invited_users[i] == client_fd)
 		 {

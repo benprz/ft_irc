@@ -7,7 +7,7 @@ Server::Server() : _port(666), _password("dumbpassword")
 Server::Server(int const port, std::string const password) : _port(port), _password(password)
 {
 	_server_fd = create_server_fd();
-	bzero(pfds, sizeof(pfds));
+	std::memset(pfds, 0, sizeof(pfds));
 	nfds = 0;
 }
 
@@ -23,7 +23,7 @@ void	Server::printpfds() // debug
 	std::cout << "	fd=" << pfds[0].fd << std::endl;
 	std::cout << "	events=" << pfds[0].events << std::endl;
 	std::cout << "	revents=" << pfds[0].revents << std::endl;
-	for (int i = 1; i < MAX_ALLOWED_CLIENTS; i++)
+	for (size_t i = 1; i < MAX_ALLOWED_CLIENTS; i++)
 	{
 		if (pfds[i].events == 0)
 			continue ;
@@ -44,7 +44,7 @@ void	Server::printpfds() // debug
 		std::cout << "	realname=" << _Clients[0].realname << std::endl;
 		std::cout << "	mode=" << _Clients[0].modes << std::endl;
 		std::cout << "	opened_channels=" << _Clients[0].opened_channels << std::endl;
-		for (int i = 1; i < _Clients.size(); i++)
+		for (size_t i = 1; i < _Clients.size(); i++)
 		{
 			std::cout << std::endl << "Clients[" << i << "]" << std::endl;
 			std::cout << "	fd=" << _Clients[i].fd << std::endl;
@@ -81,7 +81,7 @@ int Server::create_server_fd(void) const
 		return (ERROR);
 	}
 
-	bzero(&server_addr, sizeof(server_addr));
+	std::memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = SOCK_DOMAIN;
 	server_addr.sin_port = htons(_port);
 	server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -146,7 +146,7 @@ std::vector<std::string> Server::string_split(std::string s, const char delimite
 void    Server::add_client(int fd)
 {
 	std::cout << "Add client! fd=" << fd << std::endl;
-	for (int i = 0; i < MAX_ALLOWED_CLIENTS; i++)
+	for (size_t i = 0; i < MAX_ALLOWED_CLIENTS; i++)
 	{
 		if (pfds[i].events == 0)
 		{
@@ -164,7 +164,7 @@ void    Server::add_client(int fd)
 
 void	Server::remove_client_from_all_chans(int client_fd)
 {
-	for (int i = 0; i < _Channels.size(); i++)
+	for (size_t i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].is_user_on_channel(client_fd))
 			remove_client_from_chan(i, get_client_id(client_fd), "");
@@ -178,7 +178,7 @@ void	Server::remove_client_from_all_chans()
 
 int	Server::get_pfd_id(int fd)
 {
-	for (int i = 0; i < MAX_ALLOWED_CLIENTS; i++)
+	for (size_t i = 0; i < MAX_ALLOWED_CLIENTS; i++)
 	{
 		if (pfds[i].fd == fd)
 			return (i);
@@ -212,7 +212,7 @@ void    Server::remove_client()
 
 void Server::parse_client_packet(std::string packet)
 {
-	int newline_pos;
+	size_t newline_pos;
 
 	Client = &_Clients[get_client_id(pfds[current_pfd].fd)];
 	Client->packet += packet;

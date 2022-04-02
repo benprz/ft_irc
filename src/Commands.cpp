@@ -24,14 +24,14 @@ void Server::send_message(int fd, std::string numeric_reply)
 			if (Client->split_command[0][0] == '*')
 			{
 				message += "* * :" + _Clients[0].nickname;
-				for (int i = 1; i < _Clients.size(); i++)
+				for (size_t i = 1; i < _Clients.size(); i++)
 					message += " " + _Clients[i].nickname;
 			}
 			else
 			{
 				int channel_id = get_channel_id(Client->split_command[0]);
 				message += "= " + Client->split_command[0] + " :";
-				for (int i = 0; i < _Channels[channel_id].users.size(); i++)
+				for (size_t i = 0; i < _Channels[channel_id].users.size(); i++)
 				{
 					if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
 					{
@@ -127,7 +127,7 @@ void Server::send_message(std::string numeric_reply)
 int Server::count_visible_users_on_channel(int channel_id)
 {
 	int count = 0;
-	for (int i = 0; i < _Channels[channel_id].users.size(); i++)
+	for (size_t i = 0; i < _Channels[channel_id].users.size(); i++)
 	{
 		if (!_Clients[get_client_id(_Channels[channel_id].users[i])].is_invisible())
 			count++;
@@ -187,7 +187,7 @@ void Server::USER()
 	{
 		//on ignore _split_packet[2] && [3] parce que c'est pour les communications server-server
 		Client->username = Client->split_command[1];
-		for (int i = 5; i < Client->split_command.size(); i++)
+		for (size_t i = 5; i < Client->split_command.size(); i++)
 		{
 			Client->split_command[4] += " ";
 			Client->split_command[4] += Client->split_command[i];
@@ -241,7 +241,7 @@ int	Server::add_or_remove_special_mode_channel(char action, char mode, std::stri
 	{
 		if (action == '+')
 		{
-			for (int i = 0; i < param.size(); i++)
+			for (size_t i = 0; i < param.size(); i++)
 			{
 				if (!std::isdigit(param[i]))
 					return (ERROR);
@@ -276,10 +276,10 @@ void	Server::edit_channel_modes()
 		char action = '+';
 		char mode = 0;
 		std::string edited_modes;
-		int current_param = 3;
+		size_t current_param = 3;
 		std::string params_list;
 		int ret;
-		for (int i = 0; i < Client->split_command[2].size(); i++)
+		for (size_t i = 0; i < Client->split_command[2].size(); i++)
 		{
 			if (Client->split_command[2][i] == '+' || Client->split_command[2][i] == '-')
 			{
@@ -358,7 +358,7 @@ void	Server::MODE()
 					char action = Client->split_command[2][0];
 					if (action == '+' || action == '-')
 					{
-						for (int i = 1; i < Client->split_command[2].size(); i++)
+						for (size_t i = 1; i < Client->split_command[2].size(); i++)
 						{
 							if (static_cast<std::string>(USER_MODES).find(Client->split_command[2][i]) != std::string::npos)
 							{
@@ -366,7 +366,7 @@ void	Server::MODE()
 									Client->modes += 'i';
 								else if (action == '-')
 								{
-									int pos = Client->modes.find(Client->split_command[2][i]);
+									size_t pos = Client->modes.find(Client->split_command[2][i]);
 									if (pos != std::string::npos)
 										Client->modes.erase(Client->modes.begin() + pos);
 								}
@@ -396,11 +396,11 @@ void	Server::PRIVMSG()
 		std::string prefix = Client->get_prefix() + " PRIVMSG ";
 
 		std::string text = Client->split_command[2];
-		for (int i = 3; i < Client->split_command.size(); i++)
+		for (size_t i = 3; i < Client->split_command.size(); i++)
 			text += " " + Client->split_command[i];
 
 		std::vector<std::string> split_receivers = string_split(Client->split_command[1], ',');
-		for (int i = 0; i < split_receivers.size(); i++)
+		for (size_t i = 0; i < split_receivers.size(); i++)
 		{
 			Client->split_command[1] = split_receivers[i];
 			std::string message = prefix + split_receivers[i] + " " + text;
@@ -423,7 +423,7 @@ void	Server::PRIVMSG()
 void	Server::printchannels()
 {
 	std::cout << std::endl << "@@@@@@@@@ Channels list @@@@@@@@@@\n\n";
-	for (int i = 0; i < _Channels.size(); i++)
+	for (size_t i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].name != "")
 		{
@@ -432,22 +432,23 @@ void	Server::printchannels()
 			std::cout << "	key=" << _Channels[i].key << std::endl;
 			std::cout << "	mode=" << _Channels[i].modes << std::endl;
 			std::cout << "	users=";
-			for (int j = 0; j < _Channels[i].users.size(); j++)
+			for (size_t j = 0; j < _Channels[i].users.size(); j++)
 			{
 				std::cout << _Channels[i].users[j] << " ";
 			}
 			std::cout << "\n";
 			std::cout << "	operators=";
-			for (int j = 0; j < _Channels[i].operators.size(); j++)
+			for (size_t j = 0; j < _Channels[i].operators.size(); j++)
 			{
 				std::cout << _Channels[i].operators[j] << " ";
 			}
 			std::cout << "\n";
 			std::cout << "	invited_users=";
-			for (int j = 0; j < _Channels[i].invited_users.size(); j++)
+			for (size_t j = 0; j < _Channels[i].invited_users.size(); j++)
 			{
 				std::cout << _Channels[i].invited_users[j] << " ";
 			}
+			std::cout << "\n";
 			std::cout << "	users_limit=" << _Channels[i].users_limit << std::endl;
 			std::cout << "	topic=" << _Channels[i].topic << std::endl;
 			std::cout << "\n";
@@ -467,7 +468,7 @@ int	Server::get_client_fd(std::string nick)
 
 int	Server::get_client_id(int fd)
 {
-	for (int i = 0; i < _Clients.size(); i++)
+	for (size_t i = 0; i < _Clients.size(); i++)
 	{
 		if (_Clients[i].fd == fd)
 			return (i);
@@ -477,7 +478,7 @@ int	Server::get_client_id(int fd)
 
 int	Server::get_client_id(std::string nick)
 {
-	for (int i = 0; i < _Clients.size(); i++)
+	for (size_t i = 0; i < _Clients.size(); i++)
 	{
 		if (_Clients[i].nickname == nick)
 			return (i);
@@ -487,7 +488,7 @@ int	Server::get_client_id(std::string nick)
 
 int	Server::get_channel_id(std::string channel)
 {
-	for (int i = 0; i < _Channels.size(); i++)
+	for (size_t i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].name == channel)
 			return (i);
@@ -501,7 +502,7 @@ void	Server::send_message_to_channel(int channel_id, std::string message)
 	{
 		if (!_Channels[channel_id].is_moderated() || (_Channels[channel_id].is_moderated() && _Channels[channel_id].is_user_operator(Client->fd)))
 		{
-			for (int j = 0; j < _Channels[channel_id].users.size(); j++)
+			for (size_t j = 0; j < _Channels[channel_id].users.size(); j++)
 			{
 				if (Client->split_command[0] != "PRIVMSG" || (Client->split_command[0] == "PRIVMSG" && Client->fd != _Channels[channel_id].users[j]))
 					send_message(_Channels[channel_id].users[j], message);
@@ -517,7 +518,7 @@ void	Server::send_message_to_channel(std::string message)
 
 void	Server::send_message_to_client_channels(std::string message)
 {
-	for (int i = 0; i < _Channels.size(); i++)
+	for (size_t i = 0; i < _Channels.size(); i++)
 	{
 		if (_Channels[i].is_user_on_channel(Client->fd))
 		{
@@ -542,10 +543,8 @@ void	Server::add_client_to_chan(int channel_id)
 
 void	Server::remove_client_from_chan(int channel_id, int client_id, std::string reason)
 {
-	_Channels[channel_id].remove_user(_Clients[client_id].fd);
-	std::cout << "NICO PU OP !!!!!!!!!!!!!!\n";
-	_Channels[channel_id].remove_operator(_Clients[client_id].fd);
 	send_message_to_channel(channel_id, _Clients[client_id].get_prefix() + " PART " + _Channels[channel_id].name + reason);
+	_Channels[channel_id].remove_user(_Clients[client_id].fd);
 	_Clients[client_id].opened_channels--;
 	if (_Channels[channel_id].users.size() == 0)
 		_Channels.erase(_Channels.begin() + channel_id);
@@ -580,6 +579,7 @@ void	Server::INVITE()
 							_Channels[channel_id].add_user_to_invite_list(client_fd);
 							send_message(client_fd, Client->get_prefix() + " INVITE " + Client->split_command[1] + " " + Client->split_command[2]);
 							send_message(RPL_INVITING);
+							printchannels();
 						}
 						else
 							send_message(ERR_USERONCHANNEL);
@@ -610,7 +610,7 @@ void	Server::PART()
 	else
 	{
 		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
-		for (int i = 0; i < split_channels.size(); i++)
+		for (size_t i = 0; i < split_channels.size(); i++)
 		{
 			Client->split_command[0] = split_channels[i];
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
@@ -622,7 +622,7 @@ void	Server::PART()
 					if (Client->split_command.size() > 2)
 					{
 						part_reason += " :";
-						for (int i = 2; i < Client->split_command.size(); i++)
+						for (size_t i = 2; i < Client->split_command.size(); i++)
 						{
 							part_reason += Client->split_command[i];
 							if (i < Client->split_command.size() - 1)
@@ -653,7 +653,7 @@ void	Server::JOIN()
 		int channel_id;
 		if (Client->split_command.size() == 3)
 			split_keys = string_split(Client->split_command[2], ',');
-		for (int i = 0; i < split_channels.size(); i++)
+		for (size_t i = 0; i < split_channels.size(); i++)
 		{
 			if (split_channels[i][0] != '#')
 				send_message(ERR_NOSUCHCHANNEL);
@@ -751,7 +751,7 @@ void Server::QUIT(void)
 	if (Client->split_command.size() > 1 && Client->split_command[1][0] == ':')
 	{
 		Client->split_command[1].erase(Client->split_command[1].begin());
-		for (int i = 1; i < Client->split_command.size(); i++)
+		for (size_t i = 1; i < Client->split_command.size(); i++)
 			message += " " + Client->split_command[i];
 	}
 	else
@@ -765,7 +765,7 @@ void Server::LIST()
 	send_message(RPL_LISTSTART);
 	if (Client->split_command.size() == 1)
 	{
-		for (int i = 0; i < _Channels.size(); i++)
+		for (size_t i = 0; i < _Channels.size(); i++)
 		{
 			if (_Channels[i].is_user_on_channel(Client->fd) || !_Channels[i].is_secret())
 			{
@@ -778,7 +778,7 @@ void Server::LIST()
 	{
 		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
 		int channel_id;
-		for (int i = 0; i < split_channels.size(); i++)
+		for (size_t i = 0; i < split_channels.size(); i++)
 		{
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
@@ -800,7 +800,7 @@ void Server::NAMES()
 	if (Client->split_command.size() > 1)
 	{
 		std::vector<std::string> split_channels = string_split(Client->split_command[1], ',');
-		for (int i = 0; i < split_channels.size(); i++)
+		for (size_t i = 0; i < split_channels.size(); i++)
 		{
 			if ((channel_id = get_channel_id(split_channels[i])) >= 0)
 			{
@@ -812,12 +812,12 @@ void Server::NAMES()
 			}
 		}
 		Client->split_command[0] = split_channels[0];
-		for (int i = 1; i < split_channels.size(); i++)
+		for (size_t i = 1; i < split_channels.size(); i++)
 			Client->split_command[0] += " " + split_channels[i];
 	}
 	else
 	{
-		for (int i = 0; i < _Channels.size(); i++)
+		for (size_t i = 0; i < _Channels.size(); i++)
 		{
 			if (_Channels[i].is_secret() == 0)
 			{
@@ -851,7 +851,7 @@ void Server::TOPIC()
 						std::string topic;
 						if (Client->split_command[2][0] == ':')
 							Client->split_command[2].erase(Client->split_command[2].begin());
-						for (int i = 2; i < Client->split_command.size(); i++)
+						for (size_t i = 2; i < Client->split_command.size(); i++)
 						{
 							topic += Client->split_command[i];
 							if (i < Client->split_command.size() - 1)

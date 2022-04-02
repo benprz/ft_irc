@@ -20,7 +20,7 @@ class ChannelsList
 		std::vector<int> invited_users;
 		std::vector<int> operators;
 		std::string topic;
-		int users_limit;
+		size_t users_limit;
 
 		ChannelsList(std::string name);
 		void	add_user(int client_fd);
